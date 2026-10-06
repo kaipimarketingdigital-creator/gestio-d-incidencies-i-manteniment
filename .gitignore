@@ -1,0 +1,17 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Material del hotel: chat exportado, fotos, audios y datos personales. No se sube nunca.
+material-hotel/
+*.opus
+*.vcf
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+node_modules/
+.DS_Store
+Thumbs.db
