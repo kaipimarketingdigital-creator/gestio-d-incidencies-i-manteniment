@@ -113,6 +113,10 @@ async function incidenciaDeResposta(xat: number, respostaA: number | null) {
   const { data: m } = await db.from("missatges").select("incidencia_id")
     .eq("tg_xat_id", xat).eq("tg_missatge_id", respostaA).maybeSingle();
   if (m?.incidencia_id) return { incId: m.incidencia_id as number, tipus: "avis", textBot: null };
+  // Resposta a un company: passem el text original perquè la IA sàpiga de què parla.
+  const { data: o } = await db.from("missatges").select("text")
+    .eq("tg_xat_id", xat).eq("tg_missatge_id", respostaA).maybeSingle();
+  if (o?.text) return { incId: null, tipus: "missatge", textBot: String(o.text).slice(0, 300) };
   return null;
 }
 
@@ -257,6 +261,41 @@ async function processar(): Promise<Record<string, unknown>> {
   return { grups: grups.size, processats: fets };
 }
 
+function capcalera(llistaZones: Zona[], obertes: Inc[], autor: string, data?: string, conversa = ""): string {
+  const zonaPerId = new Map(llistaZones.map((z) => [z.id, z]));
+  const ara = data ?? new Date().toLocaleString("ca-ES", { timeZone: "Europe/Madrid" });
+  return `Data i hora: ${ara}\n\nZONES (nom exacte; àlies entre parèntesis):\n` +
+    llistaZones.map((z) => z.alies.length ? `${z.nom} (${z.alies.join(", ")})` : z.nom).join("; ") +
+    `\n\nINCIDÈNCIES OBERTES:\n` +
+    (obertes.map((i: Inc) =>
+      `#${i.id} · ${nomZona(zonaPerId.get(i.zona_id), i.zona_text)} · ${i.categoria} · ${i.prioritat} · ${i.estat} · ${i.descripcio}`
+    ).join("\n") || "(cap)") +
+    `\n\nCONVERSA RECENT DEL GRUP (només context, ja processada; no en creïs incidències):\n${conversa || "(res)"}` +
+    `\n\nMISSATGES NOUS de ${autor} (numerats):\n`;
+}
+
+// Darrers missatges del grup (3 hores), perquè la IA entengui "ja està", "i la de dalt?", etc.
+async function conversaRecent(xat: number, excloure: number[]): Promise<string> {
+  const desde = new Date(Date.now() - 3 * 3600e3).toISOString();
+  const { data } = await db.from("missatges").select("id, text, incidencia_id, rebut_el, persones(nom)")
+    .eq("tg_xat_id", xat).eq("processat", true).gte("rebut_el", desde)
+    .order("rebut_el", { ascending: false }).limit(12);
+  // deno-lint-ignore no-explicit-any
+  return (data ?? []).filter((m: any) => !excloure.includes(m.id) && m.text).reverse().map((m: any) =>
+    `- ${m.persones?.nom ?? "algú"}: ${String(m.text).slice(0, 200)}${m.incidencia_id ? ` (→ #${m.incidencia_id})` : ""}`
+  ).join("\n");
+}
+
+// Quantes vegades ha fallat el mateix (zona i categoria) els últims 30 dies, sense comptar aquesta.
+async function repeticions(inc: Inc): Promise<number> {
+  if (!inc.zona_id) return 0;
+  const desde = new Date(Date.now() - 30 * 864e5).toISOString();
+  const { count } = await db.from("incidencies").select("id", { count: "exact", head: true })
+    .eq("zona_id", inc.zona_id).eq("categoria", inc.categoria).neq("id", inc.id)
+    .neq("estat", "anullada").gte("creada_el", desde);
+  return count ?? 0;
+}
+
 async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
   const xat = msgs[0].tg_xat_id;
   const { data: autor } = await db.from("persones").select("id, nom").eq("id", msgs[0].autor_id).maybeSingle();
@@ -266,14 +305,8 @@ async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
     .not("estat", "in", "(resolta,anullada)").order("creada_el", { ascending: false }).limit(80);
   const zonaPerId = new Map(llistaZones.map((z) => [z.id, z]));
 
-  const ara = new Date().toLocaleString("ca-ES", { timeZone: "Europe/Madrid" });
-  let ctx = `Data i hora: ${ara}\n\nZONES (nom exacte; àlies entre parèntesis):\n` +
-    llistaZones.map((z) => z.alies.length ? `${z.nom} (${z.alies.join(", ")})` : z.nom).join("; ") +
-    `\n\nINCIDÈNCIES OBERTES:\n` +
-    ((obertes ?? []).map((i: Inc) =>
-      `#${i.id} · ${nomZona(zonaPerId.get(i.zona_id), i.zona_text)} · ${i.categoria} · ${i.prioritat} · ${i.estat} · ${i.descripcio}`
-    ).join("\n") || "(cap)") +
-    `\n\nMISSATGES NOUS de ${autor?.nom ?? "algú"} (numerats):\n`;
+  const conversa = await conversaRecent(xat, msgs.map((m: Msg) => m.id));
+  let ctx = capcalera(llistaZones, obertes ?? [], autor?.nom ?? "algú", undefined, conversa);
 
   const parts: Part[] = [];
   for (let n = 0; n < msgs.length; n++) {
@@ -286,6 +319,8 @@ async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
       linia += `  ← respon a la incidència #${ref.incId}`;
     } else if (ref?.tipus === "pregunta") {
       linia += `  ← respon a la pregunta del bot: «${ref.textBot}»`;
+    } else if (ref?.tipus === "missatge") {
+      linia += `  ← respon al missatge: «${ref.textBot}»`;
     }
     const { data: adj } = await db.from("adjunts").select("*").eq("missatge_id", m.id);
     for (const a of adj ?? []) {
@@ -331,7 +366,11 @@ async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
       if (error) throw error;
       await historial(inc.id, autor?.id ?? null, "estat", null, "oberta");
       await vincular(a, inc.id);
-      const conf = await enviar(xat, `🆕 Incidència #${inc.id} registrada\n${resum(inc, z)}`, respostaPer(a), inc.id,
+      const abans = await repeticions(inc);
+      const avisRepetida = abans > 0
+        ? `\n🔁 ${abans + 1}a vegada en 30 dies: ${NOM_CATEGORIA[inc.categoria]?.toLowerCase() ?? inc.categoria} a ${nomZona(z)}`
+        : "";
+      const conf = await enviar(xat, `🆕 Incidència #${inc.id} registrada\n${resum(inc, z)}${avisRepetida}`, respostaPer(a), inc.id,
         "confirmacio", { reply_markup: botons(inc.id) });
       if (conf) await db.from("incidencies").update({ tg_confirmacio_id: conf }).eq("id", inc.id);
     } else if (a.accio === "actualitzar" && a.incidencia_id) {
@@ -375,6 +414,81 @@ function b64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
+// ---------------------------------------------------------------- resum del matí
+
+const HORA_RESUM = Number(Deno.env.get("RESUM_HORA") ?? "8");
+const ORDRE_PRIORITAT: Record<string, number> = { urgent: 0, alta: 1, mitjana: 2, baixa: 3 };
+
+async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
+  const hora = Number(new Date().toLocaleString("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }));
+  if (!forcar && hora !== HORA_RESUM) return { enviat: false, motiu: `no és l'hora (${hora} h)` };
+
+  let xat = GROUP_ID ? Number(GROUP_ID) : null;
+  if (!xat) {
+    const { data } = await db.from("missatges").select("tg_xat_id").order("rebut_el", { ascending: false }).limit(1).maybeSingle();
+    xat = data?.tg_xat_id ?? null;
+  }
+  if (!xat) return { enviat: false, motiu: "cap grup conegut" };
+  // Com a molt un resum cada 50 minuts, encara que algú cridi la URL.
+  const { count: recents } = await db.from("missatges_bot").select("id", { count: "exact", head: true })
+    .eq("tipus", "resum").gte("creat_el", new Date(Date.now() - 50 * 60e3).toISOString());
+  if (recents) return { enviat: false, motiu: "ja s'ha enviat fa poc" };
+
+  const llistaZones = await zones();
+  const zonaPerId = new Map(llistaZones.map((z) => [z.id, z]));
+  const { data: obertes } = await db.from("incidencies").select("*")
+    .not("estat", "in", "(resolta,anullada)").order("creada_el");
+  const llista = (obertes ?? []).sort((a: Inc, b: Inc) =>
+    (ORDRE_PRIORITAT[a.prioritat] ?? 9) - (ORDRE_PRIORITAT[b.prioritat] ?? 9));
+
+  const dies = (d: string) => {
+    const n = Math.floor((Date.now() - Date.parse(d)) / 864e5);
+    return n === 0 ? "avui" : n === 1 ? "ahir" : `fa ${n} dies`;
+  };
+  const marca: Record<string, string> = { urgent: "🔴", alta: "🟠", mitjana: "🟡", baixa: "⚪" };
+  const espera: Record<string, string> = { esperant_material: " · esperant material", proveidor_extern: " · proveïdor extern" };
+
+  let text: string;
+  if (!llista.length) {
+    text = "☀ Bon dia! Cap incidència pendent. 👌";
+  } else {
+    text = `☀ Bon dia! Hi ha ${llista.length} ${llista.length === 1 ? "incidència pendent" : "incidències pendents"}:\n\n` +
+      llista.slice(0, 30).map((i: Inc) =>
+        `${marca[i.prioritat] ?? "•"} #${i.id} ${nomZona(zonaPerId.get(i.zona_id), i.zona_text)} · ${i.descripcio} (${dies(i.creada_el)})${espera[i.estat] ?? ""}`
+      ).join("\n") +
+      (llista.length > 30 ? `\n… i ${llista.length - 30} més.` : "");
+  }
+  await enviar(xat, text, null, null, "resum");
+  return { enviat: true, pendents: llista.length };
+}
+
+// ---------------------------------------------------------------- examen amb casos reals (no publica res)
+
+async function avaluar(): Promise<Record<string, unknown>> {
+  const { data: casos, error } = await db.rpc("reclamar_avaluacio", { n: 8 });
+  if (error) throw error;
+  if (!casos?.length) return { fets: 0 };
+  const llistaZones = await zones();
+  await Promise.all((casos as Msg[]).map(async (c) => {
+    const linies = String(c.text).split("\n").map((l, n) => `[${n}] ${l}`).join("\n");
+    // Context: els casos anteriors de les 3 hores prèvies, com tindria el bot de veritat.
+    const desde = new Date(new Date(c.data).getTime() - 3 * 3600e3).toISOString();
+    const { data: abans } = await db.from("avaluacio_casos").select("rol, text")
+      .lt("data", c.data).gte("data", desde).order("data", { ascending: false }).limit(6);
+    const conversa = (abans ?? []).reverse()
+      .map((a: { rol: string; text: string }) => `- ${a.rol}: ${String(a.text).replaceAll("\n", " / ").slice(0, 200)}`)
+      .join("\n");
+    const ctx = capcalera(llistaZones, [], c.rol, new Date(c.data).toLocaleString("ca-ES"), conversa) + linies;
+    try {
+      const accions = await interpretar(ctx, []);
+      await db.from("avaluacio_casos").update({ accions, model: MODEL, fet_el: new Date().toISOString(), error: null }).eq("id", c.id);
+    } catch (e) {
+      await db.from("avaluacio_casos").update({ error: String(e).slice(0, 500), model: MODEL }).eq("id", c.id);
+    }
+  }));
+  return { fets: casos.length };
+}
+
 // ---------------------------------------------------------------- configuració
 
 async function configurar(): Promise<Response> {
@@ -403,11 +517,16 @@ Deno.serve(async (req) => {
 
   if (accio === "configurar") return await configurar();
   if (accio === "models") return Response.json({ model_actual: MODEL, disponibles: await llistarModels() });
-  if (accio === "processar") {
+  const tasques: Record<string, () => Promise<Record<string, unknown>>> = {
+    processar,
+    resum: () => resumDiari(url.searchParams.get("forcar") === "1"),
+    avaluar,
+  };
+  if (accio && tasques[accio]) {
     try {
-      return Response.json(await processar());
+      return Response.json(await tasques[accio]());
     } catch (e) {
-      console.error("processar", e);
+      console.error(accio, e);
       return new Response("error", { status: 500 });
     }
   }

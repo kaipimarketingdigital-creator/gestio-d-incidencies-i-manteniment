@@ -34,9 +34,14 @@ Per a cada grup de missatges retorna una llista d'accions:
 - "actualitzar": informació nova sobre una incidència oberta (indica incidencia_id i posa-ho a "nota").
 - "resoldre": algú diu que una incidència oberta ja està feta ("fet", "arreglat", "ja està", "repassar").
   Indica incidencia_id. Si diu "repassar", posa nota "cal repassar".
-  Si és un "fet" solt i no queda clar quina incidència és, fes servir "preguntar".
-- "ignorar": salutacions, bromes, preguntes on és una cosa, coordinació, missatges equivocats de grup.
-- "preguntar": només si falta una dada imprescindible (normalment la zona) o un "fet" és ambigu.
+  Si és un "fet" solt i hi encaixen diverses incidències obertes, "preguntar"; si no n'hi encaixa cap, "ignorar".
+- "ignorar": salutacions, bromes, preguntes on és una cosa, coordinació, comentaris i seguiments entre
+  companys ("ho has mirat?", "jo diria que ja està", "vaig tancar-la jo"), missatges equivocats de grup.
+- "preguntar": només quan el missatge és clarament un AVÍS NOU d'avaria o d'encàrrec i falta la zona, o un
+  "fet" és ambigu entre diverses incidències obertes. Abans de preguntar, mira la CONVERSA RECENT i el
+  missatge al qual respon: si la zona hi surt, fes-la servir. No preguntis per un comentari, un seguiment
+  o un "fet"/"arreglat" quan no hi ha cap incidència oberta que hi encaixi: llavors "ignorar".
+  Cada pregunta molesta l'equip; si dubtes entre preguntar i ignorar un comentari, ignora.
   La pregunta ha de ser curta, en català.
 
 Regles:
@@ -53,7 +58,13 @@ Regles:
 - "manteniment" també vol dir reparar coses; només "és manteniment" dit d'una habitació indica que està ocupada.
 - "productora" són clients com els altres.
 - Encàrrecs que no són avaries ("pujar les hamaques", "preparar el projector") són categoria "tasca".
-- Si una avaria nova és clarament la mateixa que una incidència oberta de la mateixa zona, fes "actualitzar".`;
+- Si una avaria nova és clarament la mateixa que una incidència oberta de la mateixa zona, fes "actualitzar".
+- "Repassar" (p. ex. "202 i 305 repassar") el diu manteniment quan ha acabat i pisos ha de tornar a netejar
+  l'habitació: és "resoldre" la incidència oberta d'aquella zona amb nota "cal repassar". Mai és una incidència
+  nova; si no hi ha cap incidència oberta en aquella zona, "ignorar".
+- Quan es canvia una cosa d'habitació ("agafo el comandament de la 204 per a la 213", "la tele de la 112
+  la poso a la 209"), la incidència és a l'habitació que es queda sense o on segueix l'avaria, no a l'altra.
+- La CONVERSA RECENT és només context: no hi facis accions, encara que hi hagi avisos.`;
 
 const ESQUEMA = {
   type: "OBJECT",
