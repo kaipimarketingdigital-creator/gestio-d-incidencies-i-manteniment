@@ -1,16 +1,73 @@
 // Entrada de missatges de Telegram.
+//
 // Fase 0: valida l'origen, desa el missatge i els adjunts tal com arriben, i respon 200.
 // La interpretació amb IA i la confirmació al grup s'afegeixen a la fase 1.
-// Pendent de provar contra un projecte real.
+//
+// Secrets (Edge Functions > Secrets):
+//   TELEGRAM_BOT_TOKEN   obligatori
+//   TELEGRAM_GROUP_ID    opcional; si hi és, només s'accepten missatges d'aquest grup
+//
+// Configuració del webhook: cridar una vegada
+//   GET <url de la funció>?accio=configurar
+// La funció registra la seva pròpia URL a Telegram amb un secret derivat del token,
+// de manera que cap clau ha de passar per cap persona.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
-const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET")!;
-const GROUP_ID = Deno.env.get("TELEGRAM_GROUP_ID");
+const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const GROUP_ID = Deno.env.get("TELEGRAM_GROUP_ID") ?? "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+
+function clauServei(): string {
+  const noves = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (noves) {
+    try {
+      const k = JSON.parse(noves)["default"];
+      if (k) return k;
+    } catch { /* continua amb la clau antiga */ }
+  }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+}
+
+const supabase = createClient(SUPABASE_URL, clauServei(), {
+  auth: { persistSession: false },
+});
+
+// Secret del webhook derivat del token: Telegram l'envia a cada petició.
+async function secretWebhook(): Promise<string> {
+  const dades = new TextEncoder().encode(`${BOT_TOKEN}:webhook-hotel-rull`);
+  const hash = await crypto.subtle.digest("SHA-256", dades);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function telegram(metode: string, cos: Record<string, unknown>) {
+  const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${metode}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cos),
+  });
+  return await r.json();
+}
+
+async function configurar(): Promise<Response> {
+  const url = `${SUPABASE_URL}/functions/v1/telegram-webhook`;
+  const res = await telegram("setWebhook", {
+    url,
+    secret_token: await secretWebhook(),
+    allowed_updates: ["message", "edited_message", "callback_query"],
+    drop_pending_updates: false,
+  });
+  const info = await telegram("getWebhookInfo", {});
+  const jo = await telegram("getMe", {});
+  // No es retorna cap secret: només l'estat.
+  return Response.json({
+    setWebhook: { ok: res.ok, description: res.description },
+    bot: jo.result ? { username: jo.result.username, llegeix_tot_el_grup: jo.result.can_read_all_group_messages } : jo,
+    webhook: info.result
+      ? { url: info.result.url, pendents: info.result.pending_update_count, ultim_error: info.result.last_error_message ?? null }
+      : info,
+  });
+}
 
 type Adjunt = { tipus: "foto" | "audio" | "video" | "altre"; file_id: string; mida?: number };
 
@@ -30,16 +87,22 @@ function adjuntsDe(m: any): Adjunt[] {
 }
 
 Deno.serve(async (req) => {
-  if (req.headers.get("X-Telegram-Bot-Api-Secret-Token") !== WEBHOOK_SECRET) {
+  if (!BOT_TOKEN) return new Response("falta TELEGRAM_BOT_TOKEN", { status: 500 });
+
+  const url = new URL(req.url);
+  if (req.method === "GET" && url.searchParams.get("accio") === "configurar") {
+    return await configurar();
+  }
+  if (req.method !== "POST") return new Response("ok");
+
+  if (req.headers.get("X-Telegram-Bot-Api-Secret-Token") !== (await secretWebhook())) {
     return new Response("forbidden", { status: 403 });
   }
 
   const update = await req.json();
-  const m = update.message;
-  // Només missatges nous del grup configurat; la resta s'ignora.
-  if (!m || (GROUP_ID && String(m.chat.id) !== GROUP_ID)) {
-    return new Response("ok");
-  }
+  const m = update.message ?? update.edited_message;
+  if (!m) return new Response("ok"); // els botons (callback_query) arriben a la fase 1
+  if (GROUP_ID && String(m.chat.id) !== GROUP_ID) return new Response("ok");
 
   const { data: fila, error } = await supabase
     .from("missatges")

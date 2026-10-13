@@ -6,8 +6,8 @@ amb confirmació al mateix grup. Projecte de Kaipi Marketing per a Hotel Rull.
 
 ## Estat
 
-Fase 0 (preparació). El codi és una estructura inicial: l'esquema de dades i l'esquelet
-del webhook encara no s'han executat contra un projecte real de Supabase.
+Fase 0 (preparació). Esquema aplicat al projecte de Supabase `hotel-rull-incidencies` (Irlanda) i
+webhook desplegat; pendent de connectar el token del bot i provar-lo.
 
 | Fase | Dates | Contingut |
 | --- | --- | --- |

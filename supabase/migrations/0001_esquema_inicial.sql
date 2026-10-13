@@ -1,4 +1,4 @@
--- Esquema inicial. Pendent d'executar contra un projecte real de Supabase.
+-- Esquema inicial. Aplicat al projecte hotel-rull-incidencies el 13 d'octubre de 2026.
 
 create type rol_persona as enum ('manteniment', 'pisos', 'recepcio', 'cuina', 'direccio', 'kaipi');
 create type tipus_zona as enum ('habitacio', 'comuna', 'tecnica');
@@ -61,6 +61,8 @@ create table incidencies (
 create index on incidencies (estat);
 create index on incidencies (zona_id, creada_el desc);
 create index on incidencies (tg_xat_id, tg_confirmacio_id);
+create index on incidencies (reportada_per);
+create index on incidencies (assignada_a);
 
 create table missatges (
   id              bigint generated always as identity primary key,
@@ -79,6 +81,7 @@ create table missatges (
 );
 create index on missatges (processat, rebut_el);
 create index on missatges (incidencia_id);
+create index on missatges (autor_id);
 
 create table adjunts (
   id            bigint generated always as identity primary key,
@@ -89,6 +92,7 @@ create table adjunts (
   mida_bytes    bigint,
   creat_el      timestamptz not null default now()
 );
+create index on adjunts (missatge_id);
 
 create table historial (
   id              bigint generated always as identity primary key,
@@ -100,6 +104,7 @@ create table historial (
   canviat_el      timestamptz not null default now()
 );
 create index on historial (incidencia_id, canviat_el);
+create index on historial (persona_id);
 
 create table manteniment_preventiu (
   id                uuid primary key default gen_random_uuid(),
@@ -111,6 +116,8 @@ create table manteniment_preventiu (
   activa            boolean not null default true,
   observacions      text
 );
+create index on manteniment_preventiu (zona_id);
+create index on manteniment_preventiu (responsable_id);
 
 -- Tot tancat per defecte: només hi accedeix el bot amb la clau de servei.
 -- Les polítiques per al panell web s'afegiran a la fase 4.
