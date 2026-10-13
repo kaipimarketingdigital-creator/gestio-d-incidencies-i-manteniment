@@ -31,6 +31,9 @@ Terres de l'Ebre, a vegades en castellà, amb faltes, molt breu, i sovint amb un
 Per a cada grup de missatges retorna una llista d'accions:
 - "nova": un avís d'avaria o d'una cosa que cal fer. Una incidència per avaria i habitació:
   "322 i 221 no obre el pany" són DUES incidències.
+  Revisa CADA missatge numerat per separat: si un missatge parla d'una altra habitació o d'una altra avaria,
+  és una acció a part (normalment "nova"), encara que els altres missatges del grup siguin seguiments d'una
+  incidència oberta. Una avaria diferent a la mateixa habitació (la banyera i no la pica) també és "nova".
 - "actualitzar": informació nova sobre una incidència oberta (indica incidencia_id i posa-ho a "nota").
 - "resoldre": algú diu que una incidència oberta ja està feta ("fet", "arreglat", "ja està", "repassar").
   Indica incidencia_id. Si diu "repassar", posa nota "cal repassar".
