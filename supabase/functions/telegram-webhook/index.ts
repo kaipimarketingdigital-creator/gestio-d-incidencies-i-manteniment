@@ -3,10 +3,13 @@
 // Rutes:
 //   POST (Telegram)            rep missatges i botons. Desa el missatge i, si és un "fet" en resposta
 //                              a una incidència o un botó, actua a l'instant.
-//   GET  ?accio=processar      el crida pg_cron cada 30 s. Agrupa els missatges seguits de cada persona,
+//   GET  ?accio=processar      (amb &clau=) el crida pg_cron cada 30 s. Agrupa els missatges seguits de cada persona,
 //                              els interpreta amb Gemini i registra o actualitza incidències.
 //   GET  ?accio=configurar     registra el webhook a Telegram (una vegada).
 //   GET  ?accio=models         llista els models de Gemini disponibles (diagnòstic).
+//   GET  ?accio=resum          resum del matí (cron a i 30; &forcar=1 per provar).
+//   GET  ?accio=avaluar        examen amb casos reals (no publica res).
+//   Totes les rutes GET amb ?accio= demanen &clau= (taula config, la porta el cron).
 //
 // Secrets: TELEGRAM_BOT_TOKEN, GEMINI_API_KEY; opcionals TELEGRAM_GROUP_ID, GEMINI_MODEL.
 
@@ -510,11 +513,28 @@ async function configurar(): Promise<Response> {
 
 // ---------------------------------------------------------------- servidor
 
+let clauTasques: string | null = null;
+async function clauValida(donada: string | null): Promise<boolean> {
+  if (!donada) return false;
+  if (!clauTasques) {
+    const { data } = await db.from("config").select("valor").eq("clau", "tasques").maybeSingle();
+    clauTasques = data?.valor ?? null;
+  }
+  if (!clauTasques || donada.length !== clauTasques.length) return false;
+  let dif = 0;
+  for (let i = 0; i < donada.length; i++) dif |= donada.charCodeAt(i) ^ clauTasques.charCodeAt(i);
+  return dif === 0;
+}
+
 Deno.serve(async (req) => {
   if (!BOT_TOKEN) return new Response("falta TELEGRAM_BOT_TOKEN", { status: 500 });
   const url = new URL(req.url);
   const accio = url.searchParams.get("accio");
 
+  // Les rutes de tasques només responen amb la clau de la taula config (la porta el cron).
+  if (accio && !(await clauValida(url.searchParams.get("clau")))) {
+    return new Response("forbidden", { status: 403 });
+  }
   if (accio === "configurar") return await configurar();
   if (accio === "models") return Response.json({ model_actual: MODEL, disponibles: await llistarModels() });
   const tasques: Record<string, () => Promise<Record<string, unknown>>> = {
