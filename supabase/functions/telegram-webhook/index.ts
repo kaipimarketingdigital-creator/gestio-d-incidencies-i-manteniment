@@ -311,6 +311,24 @@ async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
   const conversa = await conversaRecent(xat, msgs.map((m: Msg) => m.id));
   let ctx = capcalera(llistaZones, obertes ?? [], autor?.nom ?? "algú", undefined, conversa);
 
+  // Si el bot ha demanat fa poc una correcció i la persona contesta sense fer "Respondre",
+  // ho avisem perquè la IA ho pugui aplicar igualment.
+  if (!msgs.some((m: Msg) => m.tg_resposta_a)) {
+    const desde = new Date(Date.now() - 10 * 60e3).toISOString();
+    const { data: pc } = await db.from("missatges_bot").select("incidencia_id, creat_el")
+      .eq("tg_xat_id", xat).eq("tipus", "correccio").gte("creat_el", desde)
+      .order("creat_el", { ascending: false }).limit(1).maybeSingle();
+    if (pc?.incidencia_id) {
+      const { count: jaFeta } = await db.from("missatges_bot").select("id", { count: "exact", head: true })
+        .eq("incidencia_id", pc.incidencia_id).in("tipus", ["actualitzacio", "resolta"]).gt("creat_el", pc.creat_el);
+      if (!jaFeta) {
+        ctx = ctx.replace(`MISSATGES NOUS de`,
+          `NOTA: fa poc el bot ha demanat què cal corregir de la incidència #${pc.incidencia_id}. Si un missatge nou ` +
+            `sembla aquesta correcció (p. ex. «és la 106», «és urgent»), aplica-la amb "actualitzar" a la #${pc.incidencia_id}.\n\nMISSATGES NOUS de`);
+      }
+    }
+  }
+
   const parts: Part[] = [];
   for (let n = 0; n < msgs.length; n++) {
     const m = msgs[n];
