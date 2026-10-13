@@ -9,6 +9,7 @@ export const CATEGORIES = [
   "tv_i_electronica", "plagues", "filtracions", "neteja", "tasca", "altres",
 ] as const;
 export const PRIORITATS = ["baixa", "mitjana", "alta", "urgent"] as const;
+export const ESTATS = ["oberta", "en_curs", "esperant_material", "proveidor_extern"] as const;
 
 export type Accio = {
   accio: "nova" | "actualitzar" | "resoldre" | "ignorar" | "preguntar";
@@ -16,6 +17,7 @@ export type Accio = {
   zona?: string | null;
   categoria?: string | null;
   prioritat?: string | null;
+  estat?: string | null;
   descripcio?: string | null;
   nota?: string | null;
   pregunta?: string | null;
@@ -67,7 +69,14 @@ Regles:
   nova; si no hi ha cap incidència oberta en aquella zona, "ignorar".
 - Quan es canvia una cosa d'habitació ("agafo el comandament de la 204 per a la 213", "la tele de la 112
   la poso a la 209"), la incidència és a l'habitació que es queda sense o on segueix l'avaria, no a l'altra.
-- La CONVERSA RECENT és només context: no hi facis accions, encara que hi hagi avisos.`;
+- La CONVERSA RECENT és només context: no hi facis accions, encara que hi hagi avisos.
+- "estat" (amb "actualitzar", o amb "nova" si ja ho diu l'avís); deixa'l buit si no canvia:
+  - "esperant_material": cal comprar o demanar una peça ("està demanada", "no hi ha stock", "fins que no comprem
+    el recanvi", "s'ha de comprar").
+  - "proveidor_extern": ho ha de venir a fer una empresa de fora ("els dels ascensors", "els de l'alumini",
+    "el tècnic de l'aire", "ja he trucat al lampista").
+  - "en_curs": algú hi està treballant o hi va ara ("hi vaig", "ara ho miro", "a mig dia la canvio").
+  - "oberta": torna a estar pendent (p. ex. ja ha arribat el material però encara no s'ha fet).`;
 
 const ESQUEMA = {
   type: "OBJECT",
@@ -82,6 +91,7 @@ const ESQUEMA = {
           zona: { type: "STRING", nullable: true },
           categoria: { type: "STRING", enum: [...CATEGORIES], nullable: true },
           prioritat: { type: "STRING", enum: [...PRIORITATS], nullable: true },
+          estat: { type: "STRING", enum: [...ESTATS], nullable: true },
           descripcio: { type: "STRING", nullable: true },
           nota: { type: "STRING", nullable: true },
           pregunta: { type: "STRING", nullable: true },

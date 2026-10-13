@@ -15,7 +15,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { BOT_TOKEN, botons, descarregar, secretWebhook, tg } from "./telegram.ts";
-import { type Accio, interpretar, llistarModels, MODEL, type Part } from "./gemini.ts";
+import { type Accio, ESTATS, interpretar, llistarModels, MODEL, type Part } from "./gemini.ts";
 
 const GROUP_ID = Deno.env.get("TELEGRAM_GROUP_ID") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -43,6 +43,13 @@ const NOM_CATEGORIA: Record<string, string> = {
 const NOM_PRIORITAT: Record<string, string> = {
   baixa: "Prioritat baixa", mitjana: "Prioritat mitjana", alta: "Prioritat alta", urgent: "URGENT",
 };
+const NOM_ESTAT: Record<string, string> = {
+  oberta: "pendent", en_curs: "en curs", esperant_material: "esperant material", proveidor_extern: "proveïdor extern",
+};
+const ICONA_ESTAT: Record<string, string> = { en_curs: "🔧", esperant_material: "⏳", proveidor_extern: "🏢" };
+const estatValid = (e?: string | null) => !!e && (ESTATS as readonly string[]).includes(e);
+const avui = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Madrid" }); // AAAA-MM-DD
+
 const FET = /^\s*(fet|feta|fets|arreglat|arreglada|ja est[àa]|ja esta|solucionat|resolt|repassar|repaseu|reparat)\b/i;
 
 type Zona = { id: string; nom: string; tipus: string; alies: string[] };
@@ -56,7 +63,8 @@ function nomZona(z: Zona | undefined, text?: string | null): string {
 
 function resum(inc: Inc, z: Zona | undefined): string {
   return `${nomZona(z, inc.zona_text)} · ${NOM_CATEGORIA[inc.categoria] ?? inc.categoria} · ` +
-    `${NOM_PRIORITAT[inc.prioritat] ?? inc.prioritat}\n${inc.descripcio}`;
+    `${NOM_PRIORITAT[inc.prioritat] ?? inc.prioritat}\n${inc.descripcio}` +
+    (ICONA_ESTAT[inc.estat] ? `\n${ICONA_ESTAT[inc.estat]} ${NOM_ESTAT[inc.estat]}` : "");
 }
 
 // ---------------------------------------------------------------- dades
@@ -132,7 +140,18 @@ async function resoldre(incId: number, personaId: string | null, nota: string | 
     cal_repassar: repassar || inc.cal_repassar,
   }).eq("id", incId);
   await historial(incId, personaId, "estat", inc.estat, "resolta");
+  await programarSeguent(inc);
   return inc;
+}
+
+// Si la incidència venia d'una tasca preventiva, programa la següent revisió.
+async function programarSeguent(inc: Inc) {
+  if (!inc.preventiu_id) return;
+  const { data: t } = await db.from("manteniment_preventiu").select("periodicitat_dies")
+    .eq("id", inc.preventiu_id).maybeSingle();
+  if (!t) return;
+  const seguent = new Date(Date.parse(avui()) + t.periodicitat_dies * 864e5).toISOString().slice(0, 10);
+  await db.from("manteniment_preventiu").update({ ultima_feta: avui(), propera_revisio: seguent }).eq("id", inc.preventiu_id);
 }
 
 // ---------------------------------------------------------------- webhook
@@ -214,6 +233,7 @@ async function rebreBoto(q: any) {
     else {
       await db.from("incidencies").update({ estat: "anullada" }).eq("id", incId);
       await historial(incId, p?.id ?? null, "estat", inc.estat, "anullada");
+      await programarSeguent(inc);
     }
     const marca = tipus === "r" ? `✔ Resolta per ${qui}` : `✖ Anul·lada per ${qui}`;
     await tg("editMessageText", {
@@ -379,6 +399,7 @@ async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
       const fila = {
         zona_id: z?.id ?? null, zona_text: z ? null : (a.zona ?? null),
         categoria: a.categoria ?? "altres", prioritat: a.prioritat ?? "mitjana",
+        estat: estatValid(a.estat) ? a.estat : "oberta",
         descripcio: a.descripcio ?? "(sense descripció)", observacions: a.nota ?? null,
         reportada_per: autor?.id ?? null, ia_categoria: a.categoria ?? null, ia_prioritat: a.prioritat ?? null,
         ia_model: MODEL, tg_xat_id: xat,
@@ -403,6 +424,7 @@ async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
       if (a.categoria && a.categoria !== inc.categoria) canvis.categoria = a.categoria;
       if (a.prioritat && a.prioritat !== inc.prioritat) canvis.prioritat = a.prioritat;
       if (a.descripcio && a.descripcio !== inc.descripcio) canvis.descripcio = a.descripcio;
+      if (estatValid(a.estat) && a.estat !== inc.estat) canvis.estat = a.estat;
       if (a.nota) canvis.observacions = [inc.observacions, a.nota].filter(Boolean).join("\n");
       if (Object.keys(canvis).length) {
         await db.from("incidencies").update(canvis).eq("id", inc.id);
@@ -411,9 +433,11 @@ async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
       await vincular(a, inc.id);
       const nou = { ...inc, ...canvis };
       const corregit = ["zona_id", "zona_text", "categoria", "prioritat", "descripcio"].some((k) => k in canvis);
+      const textEstat = "estat" in canvis
+        ? `${ICONA_ESTAT[nou.estat] ?? "🔄"} Incidència #${inc.id}: ${NOM_ESTAT[nou.estat] ?? nou.estat}.`
+        : `📎 Afegit a la incidència #${inc.id}.`;
       await enviar(xat,
-        corregit ? `✏ Incidència #${inc.id} corregida\n${resum(nou, zonaPerId.get(nou.zona_id))}`
-          : `📎 Afegit a la incidència #${inc.id}.`,
+        corregit ? `✏ Incidència #${inc.id} corregida\n${resum(nou, zonaPerId.get(nou.zona_id))}` : textEstat,
         respostaPer(a), inc.id, "actualitzacio", corregit ? { reply_markup: botons(inc.id) } : {});
     } else if (a.accio === "resoldre" && a.incidencia_id) {
       const repassar = /repass/i.test(a.nota ?? "");
@@ -457,6 +481,7 @@ async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
 
   const llistaZones = await zones();
   const zonaPerId = new Map(llistaZones.map((z) => [z.id, z]));
+  const preventius = await generarPreventius(xat, zonaPerId);
   const { data: obertes } = await db.from("incidencies").select("*")
     .not("estat", "in", "(resolta,anullada)").order("creada_el");
   const llista = (obertes ?? []).sort((a: Inc, b: Inc) =>
@@ -467,7 +492,9 @@ async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
     return n === 0 ? "avui" : n === 1 ? "ahir" : `fa ${n} dies`;
   };
   const marca: Record<string, string> = { urgent: "🔴", alta: "🟠", mitjana: "🟡", baixa: "⚪" };
-  const espera: Record<string, string> = { esperant_material: " · esperant material", proveidor_extern: " · proveïdor extern" };
+  const espera: Record<string, string> = {
+    en_curs: " · 🔧 en curs", esperant_material: " · ⏳ esperant material", proveidor_extern: " · 🏢 proveïdor extern",
+  };
 
   let text: string;
   if (!llista.length) {
@@ -480,7 +507,31 @@ async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
       (llista.length > 30 ? `\n… i ${llista.length - 30} més.` : "");
   }
   await enviar(xat, text, null, null, "resum");
-  return { enviat: true, pendents: llista.length };
+  return { enviat: true, pendents: llista.length, preventius };
+}
+
+// Tasques preventives que toquen avui: cada una es converteix en una incidència i s'avisa al grup.
+async function generarPreventius(xat: number, zonaPerId: Map<string, Zona>): Promise<number> {
+  const { data: tasques } = await db.from("manteniment_preventiu").select("*")
+    .eq("activa", true).lte("propera_revisio", avui());
+  let creades = 0;
+  for (const t of tasques ?? []) {
+    const { count: oberta } = await db.from("incidencies").select("id", { count: "exact", head: true })
+      .eq("preventiu_id", t.id).not("estat", "in", "(resolta,anullada)");
+    if (oberta) continue;
+    const { data: inc, error } = await db.from("incidencies").insert({
+      zona_id: t.zona_id, categoria: t.categoria ?? "tasca", prioritat: "mitjana", descripcio: t.tasca,
+      observacions: `Manteniment preventiu (cada ${t.periodicitat_dies} dies)`, preventiu_id: t.id, tg_xat_id: xat,
+    }).select("*").single();
+    if (error) { console.error("preventiu", error); continue; }
+    await historial(inc.id, null, "estat", null, "oberta");
+    const conf = await enviar(xat,
+      `🗓 Manteniment preventiu · Incidència #${inc.id}\n${resum(inc, zonaPerId.get(inc.zona_id))}\nCada ${t.periodicitat_dies} dies.`,
+      null, inc.id, "confirmacio", { reply_markup: botons(inc.id) });
+    if (conf) await db.from("incidencies").update({ tg_confirmacio_id: conf }).eq("id", inc.id);
+    creades++;
+  }
+  return creades;
 }
 
 // ---------------------------------------------------------------- examen amb casos reals (no publica res)
