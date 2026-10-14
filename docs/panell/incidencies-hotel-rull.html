@@ -1,62 +1,78 @@
 <title>Incidències Hotel Rull</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap">
 <style>
 /* Layout: capçalera estreta, franja de xifres, després dues columnes (pendents | resoltes + repeticions) que s'apilen al mòbil. */
+/* Layout: banda blava corporativa amb el logo, franja de colors, xifres i dues columnes que s'apilen al mòbil. */
 :root {
-  --bg: #f2f4f1;        /* gris amb punt verd d'arrossar */
+  --bg: #f8f4ef;        /* crema suau de la marca */
   --surface: #ffffff;
-  --ink: #18221e;
-  --muted: #5b6862;
-  --line: #d9dfda;
-  --accent: #23624a;    /* verd fosc del Delta */
-  --urgent: #c2321f;
-  --alta: #d9741c;
-  --mitjana: #c9a227;
-  --baixa: #9aa59f;
-  --ok: #2f7d55;
-  --display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
-  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --ink: #1c2b3a;
+  --muted: #5a6878;
+  --line: #e6ded4;
+  --accent: #004b85;    /* blau Rull */
+  --marca: #004b85;
+  --terracota: #e88766;
+  --urgent: #b3261e;
+  --alta: #c0532e;
+  --mitjana: #94702f;
+  --baixa: #7a8794;
+  --ok: #4f7a4a;
+  --display: "Open Sans", "Segoe UI", Arial, sans-serif;
+  --body: "Open Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "Open Sans", "Segoe UI", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #111715; --surface: #18201d; --ink: #e4ebe6; --muted: #98a59e; --line: #2a3530;
-    --accent: #6cc39a; --urgent: #f06a55; --alta: #f0a050; --mitjana: #e2c25a; --baixa: #6f7c75; --ok: #6cc39a;
+    --bg: #0b1c2d; --surface: #12283e; --ink: #eaf0f6; --muted: #a9bacb; --line: #23415f;
+    --accent: #8fb8e0; --marca: #004b85; --terracota: #e88766; --urgent: #f07b6e; --alta: #e88766; --mitjana: #e2c49e; --baixa: #8c99a6; --ok: #b8c8ae;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #111715; --surface: #18201d; --ink: #e4ebe6; --muted: #98a59e; --line: #2a3530;
-  --accent: #6cc39a; --urgent: #f06a55; --alta: #f0a050; --mitjana: #e2c25a; --baixa: #6f7c75; --ok: #6cc39a;
+  --bg: #0b1c2d; --surface: #12283e; --ink: #eaf0f6; --muted: #a9bacb; --line: #23415f;
+  --accent: #8fb8e0; --marca: #004b85; --terracota: #e88766; --urgent: #f07b6e; --alta: #e88766; --mitjana: #e2c49e; --baixa: #8c99a6; --ok: #b8c8ae;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
-.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 24px; }
-header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
-h1 { font: 700 clamp(22px, 4vw, 30px)/1.1 var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
-.sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
-.estat { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font: 12px var(--mono); color: var(--muted); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 24px; }
+header.banda { background: var(--marca); color: #ffffff; padding-inline: 16px; }
+.banda-in { max-width: 1080px; margin: 0 auto; padding-block: 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; }
+.marca { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.marca .logo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.marca img { width: 120px; height: auto; display: block; }
+.marca .etiqueta { font: 800 11px var(--body); letter-spacing: .32em; padding-left: .32em; text-transform: uppercase; color: var(--terracota); }
+.marca .titol { border-left: 1px solid rgba(255,255,255,.35); padding-left: 18px; }
+.franja { display: flex; gap: 6px; height: 6px; }
+.franja span { flex: 1 1 0; }
+.franja span:first-child { flex: 6 1 0; background: #004b85; }
+.franja span:nth-child(2) { background: #e88766; } .franja span:nth-child(3) { background: #b8c8ae; } .franja span:nth-child(4) { background: #f0c5b5; } .franja span:nth-child(5) { background: #e2c49e; } .franja span:nth-child(6) { background: #f5e4d4; }
+h1 { font: 800 clamp(22px, 4vw, 28px)/1.1 var(--display); color: #ffffff; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+.sub { color: #cfe0f0; font-size: 13px; margin-top: 4px; }
+.estat { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font: 12px var(--mono); color: #cfe0f0; font-variant-numeric: tabular-nums; }
+.estat button { color: #ffffff; border-color: rgba(255,255,255,.75); }
+.estat button:hover { background: rgba(255,255,255,.12); }
+.estat button:focus-visible { outline-color: #ffffff; }
 button { font: 600 13px var(--body); color: var(--accent); background: transparent; border: 1px solid var(--accent); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
 button:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button:disabled { opacity: .5; cursor: default; }
 .xifres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .xifra { background: var(--surface); padding: 14px 16px; }
-.xifra b { display: block; font: 500 28px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+.xifra b { display: block; font: 700 28px/1.1 var(--mono); color: var(--accent); font-variant-numeric: tabular-nums; }
 .xifra span { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
 section { display: grid; gap: 10px; min-width: 0; }
-h2 { font: 700 15px var(--display); margin: 0; text-transform: uppercase; letter-spacing: .07em; display: flex; justify-content: space-between; align-items: baseline; }
+h2 { font: 800 14px var(--display); color: var(--accent); margin: 0; text-transform: uppercase; letter-spacing: .07em; display: flex; justify-content: space-between; align-items: baseline; }
 h2 small { font: 400 12px var(--mono); color: var(--muted); text-transform: none; letter-spacing: 0; }
 ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .inc { background: var(--surface); border-left: 4px solid var(--baixa); padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; }
 .inc[data-p="urgent"] { border-left-color: var(--urgent); }
 .inc[data-p="alta"] { border-left-color: var(--alta); }
 .inc[data-p="mitjana"] { border-left-color: var(--mitjana); }
-.inc .zona { font: 700 15px var(--display); }
+.inc .zona { font: 800 15px var(--display); }
 .inc .d { grid-column: 1 / -1; overflow-wrap: anywhere; }
 .inc .meta { grid-column: 1 / -1; font: 12px var(--mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .num { font: 12px var(--mono); color: var(--muted); text-align: right; }
@@ -66,12 +82,12 @@ ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .res .d { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 .res .ok { color: var(--ok); font: 12px var(--mono); }
 .rep { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) 2em; align-items: center; gap: 8px; font-size: 14px; }
-.rep .barra { height: 8px; background: var(--accent); border-radius: 1px; }
+.rep .barra { height: 8px; background: var(--terracota); border-radius: 1px; }
 .rep .n { font: 12px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
 .buit { background: var(--surface); padding: 18px; color: var(--muted); border: 1px dashed var(--line); }
 .filtres { display: flex; flex-wrap: wrap; gap: 6px; }
 .filtres button { color: var(--muted); border-color: var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 600; }
-.filtres button[aria-pressed="true"] { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+.filtres button[aria-pressed="true"] { color: #ffffff; background: var(--marca); border-color: var(--marca); }
 .inc { cursor: pointer; }
 .inc:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .inc .detall { grid-column: 1 / -1; border-top: 1px dashed var(--line); margin-top: 6px; padding-top: 6px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
@@ -91,17 +107,27 @@ ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: no-preference) { .inc, .res { transition: background .2s; } }
 </style>
 
-<div class="wrap">
-  <header>
-    <div>
-      <h1>Incidències · Hotel Rull</h1>
-      <div class="sub">Manteniment · vista de només lectura · prova pilot interna</div>
+<header class="banda">
+  <div class="banda-in">
+    <div class="marca">
+      <div class="logo">
+        <img src="data:image/png;base64,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" alt="Hotel Rull">
+        <span class="etiqueta">Manteniment</span>
+      </div>
+      <div class="titol">
+        <h1>Incidències</h1>
+        <div class="sub">Vista de només lectura · prova pilot interna</div>
+      </div>
     </div>
     <div class="estat">
       <span id="actualitzat">Esperant dades…</span>
       <button id="refresca" type="button" hidden>Actualitzar ara</button>
     </div>
-  </header>
+  </div>
+</header>
+<div class="franja" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+<div class="wrap">
   <p class="avis" id="avis" role="status"></p>
 
   <div class="xifres" aria-label="Resum">
