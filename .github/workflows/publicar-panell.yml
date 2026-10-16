@@ -1,0 +1,52 @@
+# Publica el panell a https://manteniment.hotelrull.com cada vegada que canvia la carpeta app/.
+# Les dades de l'FTP són secrets del repositori (Settings → Secrets and variables → Actions):
+#   FTP_SERVIDOR, FTP_USUARI, FTP_CONTRASENYA
+# Mentre no hi siguin, el flux només compila i no publica res.
+name: Publicar panell
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", ".github/workflows/publicar-panell.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: publicar-panell
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FTP_SERVIDOR: ${{ secrets.FTP_SERVIDOR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Compilar
+        working-directory: app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Pujar per FTP
+        if: env.FTP_SERVIDOR != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVIDOR }}
+          username: ${{ secrets.FTP_USUARI }}
+          password: ${{ secrets.FTP_CONTRASENYA }}
+          protocol: ftps
+          local-dir: ./app/dist/
+          server-dir: ./
+
+      - name: Avís
+        if: env.FTP_SERVIDOR == ''
+        run: echo "::notice::Falten els secrets de l'FTP; s'ha compilat però no s'ha publicat."
