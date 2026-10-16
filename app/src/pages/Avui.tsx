@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useSessio } from "../lib/sessio";
 
@@ -59,7 +60,7 @@ export default function Avui() {
         <div className="xifra-gran"><strong className="xifra">{compte("mitjana") + compte("baixa")}</strong><span>Mitjana i baixa</span></div>
       </div>
       <section className="targeta" aria-labelledby="t-obertes">
-        <h2 id="t-obertes">Incidències obertes</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><h2 id="t-obertes">Incidències obertes</h2><Link to="/incidencies">Veure totes i filtrar</Link></div>
         {files === null && !error && <p style={{ margin: 0, color: "var(--muted)" }}>Carregant…</p>}
         {files?.length === 0 && <p style={{ margin: 0 }}>No hi ha cap incidència oberta.</p>}
         {files && files.length > 0 && (
@@ -69,9 +70,9 @@ export default function Avui() {
               <tbody>
                 {files.map((f) => (
                   <tr key={f.id}>
-                    <td className="xifra">{f.id}</td>
+                    <td className="xifra"><Link to={`/incidencies/${f.id}`}>{f.id}</Link></td>
                     <td>{f.zones?.nom ?? f.zona_text ?? "—"}</td>
-                    <td>{f.descripcio}</td>
+                    <td><Link to={`/incidencies/${f.id}`} className="enllac-fila">{f.descripcio}</Link></td>
                     <td><span className={`prio ${f.prioritat}`}>{f.prioritat}</span></td>
                     <td>{NOM_ESTAT[f.estat] ?? f.estat}</td>
                     <td className="xifra" style={{ whiteSpace: "nowrap" }}>{new Date(f.creada_el).toLocaleDateString("ca-ES", { day: "2-digit", month: "2-digit" })}</td>

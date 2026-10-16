@@ -18,6 +18,7 @@ export type Usuari = {
   nom: string | null;
   rol: Rol | null;
   estat: EstatUsuari;
+  persona_id: string | null;
   creat_el: string;
   darrer_acces: string | null;
 };

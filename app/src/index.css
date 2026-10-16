@@ -128,3 +128,31 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: m
 .enllac-panell { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .enllac-panell code { background: var(--crema); padding: 6px 10px; border-radius: 4px; overflow-wrap: anywhere; }
 td select { font: 14px var(--lletra); padding: 6px 8px; min-height: 36px; border: 1px solid var(--line-fort); border-radius: 4px; background: #fff; }
+
+/* ---------- Incidències */
+.filtres { flex-direction: row; flex-wrap: wrap; align-items: end; gap: 12px; }
+.filtres .camp { flex: 1 1 150px; }
+.filtres .camp.cerca { flex: 3 1 260px; }
+.enllac-fila { color: var(--ink); text-decoration: none; }
+.enllac-fila:hover { color: var(--marca); text-decoration: underline; }
+.estat { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 3px; white-space: nowrap; background: #eaf1f8; color: var(--marca-fosc); }
+.estat.en_curs { background: #fbefe2; color: #8a4510; }
+.estat.esperant_material, .estat.proveidor_extern { background: #f6ecd9; color: #6d5212; }
+.estat.resolta { background: #eaf2e7; color: #36552f; }
+.estat.anullada { background: #eeeeee; color: #555; }
+.molla { font-size: 14px; color: var(--muted); }
+.fitxa { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.fitxa-principal { flex: 999 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.fitxa-lateral { flex: 1 1 300px; display: flex; flex-direction: column; gap: 24px; }
+.descripcio { margin: 0; font-size: 17px; }
+.galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.galeria img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; border-radius: 4px; background: var(--crema); }
+.cronologia { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.cronologia li { border-left: 3px solid var(--salvia); padding-left: 12px; }
+.cronologia .quan { font-size: 12px; color: var(--muted); }
+.cronologia p { margin: 2px 0 0; }
+.camp textarea { font: 15px var(--lletra); color: var(--ink); padding: 8px 10px; border: 1px solid var(--line-fort); border-radius: 4px; resize: vertical; }
+.casella { display: flex; gap: 8px; align-items: center; font-size: 14px; min-height: 44px; }
+.casella input { width: 20px; height: 20px; accent-color: var(--marca); }
+.llista-altres { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.llista-altres span { display: block; font-size: 12px; color: var(--muted); }
