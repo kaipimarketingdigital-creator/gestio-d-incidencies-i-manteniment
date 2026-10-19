@@ -11,7 +11,7 @@ import {
 
 type Adjunt = { id: number; tipus: "foto" | "audio" | "video" | "altre"; ruta_storage: string | null; url?: string };
 type Missatge = { id: number; text: string | null; transcripcio: string | null; rebut_el: string; autor_id: string | null; adjunts: Adjunt[] };
-type CanviHistorial = { id: number; camp: string; valor_anterior: string | null; valor_nou: string | null; canviat_el: string; persona_id: string | null };
+type CanviHistorial = { id: number; camp: string; valor_anterior: string | null; valor_nou: string | null; canviat_el: string; persona_id: string | null; usuari_id: string | null; usuari: { nom: string | null; email: string } | null };
 type Formulari = {
   estat: Estat; prioritat: Prioritat; categoria: Categoria | ""; assignada_a: string;
   cost: string; materials: string; observacions: string; cal_repassar: boolean;
@@ -53,7 +53,7 @@ export default function Fitxa() {
     const [p, m, h, a] = await Promise.all([
       supabase.from("persones").select("id, nom, actiu").order("nom"),
       supabase.from("missatges").select("id, text, transcripcio, rebut_el, autor_id, adjunts(id, tipus, ruta_storage)").eq("incidencia_id", num).order("rebut_el"),
-      supabase.from("historial").select("id, camp, valor_anterior, valor_nou, canviat_el, persona_id").eq("incidencia_id", num).order("canviat_el", { ascending: false }),
+      supabase.from("historial").select("id, camp, valor_anterior, valor_nou, canviat_el, persona_id, usuari_id, usuari:usuaris_panell(nom, email)").eq("incidencia_id", num).order("canviat_el", { ascending: false }),
       i.zona_id
         ? supabase.from("incidencies").select("*, zones(nom, planta)").eq("zona_id", i.zona_id).neq("id", num).order("creada_el", { ascending: false }).limit(20)
         : Promise.resolve({ data: [] }),
@@ -76,6 +76,9 @@ export default function Fitxa() {
   useEffect(() => { carregar(); }, [carregar]);
 
   const nomPersona = (pid: string | null) => persones.find((x) => x.id === pid)?.nom ?? null;
+  // Qui ha fet el canvi: un usuari del panell o una persona del grup de Telegram (via bot).
+  const autor = (h: CanviHistorial) =>
+    h.usuari?.nom || h.usuari?.email || (h.usuari_id ? "Panell" : nomPersona(h.persona_id) ? `${nomPersona(h.persona_id)} (Telegram)` : "Telegram");
 
   async function desar(e: FormEvent) {
     e.preventDefault();
@@ -221,7 +224,7 @@ export default function Fitxa() {
               <ol className="cronologia">
                 {historial.map((h) => (
                   <li key={h.id}>
-                    <span className="quan">{dataHora(h.canviat_el)}{nomPersona(h.persona_id) && ` · ${nomPersona(h.persona_id)}`}</span>
+                    <span className="quan">{dataHora(h.canviat_el)} · {autor(h)}</span>
                     <p>
                       <strong>{NOM_CAMP[h.camp] ?? h.camp}:</strong> {valorLlegible(h.camp, h.valor_anterior)} → {valorLlegible(h.camp, h.valor_nou)}
                     </p>
