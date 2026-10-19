@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useSessio } from "../lib/sessio";
 import {
-  CATEGORIES, NOM_CATEGORIA, NOM_ESTAT, dataCurta,
+  CATEGORIES, ESTATS_OBERTS, NOM_CATEGORIA, NOM_ESTAT, dataCurta,
   type Categoria, type Estat, type Persona, type Zona,
 } from "../lib/incidencies";
 
@@ -42,6 +42,7 @@ function quan(data: string) {
 function periode(dies: number) {
   return PERIODES.find(([d]) => d === dies)?.[1] ?? `Cada ${dies} dies`;
 }
+const vegades = (n: number) => (n === 0 ? "Encara no s'ha fet" : n === 1 ? "Feta 1 vegada" : `Feta ${n} vegades`);
 const euros = (n: number | null | undefined) =>
   n === null || n === undefined ? "—" : n.toLocaleString("ca-ES", { style: "currency", currency: "EUR" });
 const num = (s: string) => (s.trim() === "" ? null : Number(s.replace(",", ".")));
@@ -152,15 +153,25 @@ export default function Preventiu() {
               <tbody>
                 {grups[g].map((t) => {
                   const d = diesFins(t.propera_revisio);
+                  const oberta = execDe(t.id).find((x) => ESTATS_OBERTS.includes(x.estat));
                   return (
                     <tr key={t.id}>
                       <td><button type="button" className="enllac-boto" onClick={() => setEditant({ tasca: t })}>{t.tasca}</button>
-                        <span className="sota">{NOM_CATEGORIA[t.categoria]} · {execDe(t.id).length} vegades fetes</span></td>
+                        <span className="sota">{NOM_CATEGORIA[t.categoria]} · {vegades(execDe(t.id).filter((x) => x.estat === "resolta").length)}</span></td>
                       <td>{nomZona(t.zona_id)}</td>
                       <td>{periode(t.periodicitat_dies)}</td>
                       <td style={{ whiteSpace: "nowrap" }}>
-                        <span className={g === "vencudes" ? "prio urgent" : d <= 7 && g === "aviat" ? "prio alta" : undefined}>{quan(t.propera_revisio)}</span>
-                        <span className="sota">{dataCurta(t.propera_revisio)}</span>
+                        {oberta ? (
+                          <>
+                            <Link to={`/incidencies/${oberta.id}`}>Avisat: #{oberta.id}</Link>
+                            <span className="sota">{NOM_ESTAT[oberta.estat]} des del {dataCurta(oberta.creada_el)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className={g === "vencudes" ? "prio urgent" : d <= 7 && g === "aviat" ? "prio alta" : undefined}>{quan(t.propera_revisio)}</span>
+                            <span className="sota">{dataCurta(t.propera_revisio)}</span>
+                          </>
+                        )}
                       </td>
                       <td>{nomPersona(t.responsable_id)}</td>
                       <td className="xifra">{euros(t.pressupost)}</td>
@@ -260,6 +271,8 @@ function Editor(p: PropsEditor) {
     const pressupost = num(f.pressupost);
     if (!Number.isInteger(dies) || dies < 1) return p.onError("La freqüència ha de ser un nombre de dies (1 o més).");
     if (pressupost !== null && (Number.isNaN(pressupost) || pressupost < 0)) return p.onError("El pressupost ha de ser un import (per exemple 45,00).");
+    const senseNom = materials.find((m) => !m.nom.trim() && (m.cost_estimat.trim() || (m.quantitat.trim() && m.quantitat.trim() !== "1")));
+    if (senseNom) return p.onError("Hi ha un material sense nom. Escriu-lo o treu la fila amb ✕.");
     const mats = materials.filter((m) => m.nom.trim());
     for (const m of mats) {
       const q = num(m.quantitat), c = num(m.cost_estimat);
@@ -384,20 +397,20 @@ function Editor(p: PropsEditor) {
         {tasca && !copia && (
           <div className="materials">
             <div className="materials-cap">
-              <h3>Vegades fetes</h3>
+              <h3>Historial · {vegades(tancades.length).toLowerCase()}</h3>
               {gastMitja !== null && (
                 <span className="xifra">Gast mitjà {euros(gastMitja)}{tasca.pressupost != null && ` · pressupost ${euros(tasca.pressupost)}`}</span>
               )}
             </div>
             {p.execucions.length === 0 ? (
-              <p className="buit">Encara no s'ha fet cap vegada.</p>
+              <p className="buit">Encara no ha generat cap avís.</p>
             ) : (
               <ul className="llista-altres">
                 {p.execucions.map((x) => (
                   <li key={x.id}>
                     <Link to={`/incidencies/${x.id}`}>#{x.id} · {dataCurta(x.creada_el)} · {NOM_ESTAT[x.estat]}</Link>
                     <span>
-                      Gastat: {euros(x.cost)}
+                      {ESTATS_OBERTS.includes(x.estat) ? "Pendent de fer" : <>Gastat: {euros(x.cost)}</>}
                       {tasca.pressupost != null && x.cost != null && x.cost > tasca.pressupost && " (per sobre del pressupost)"}
                       {x.materials && ` · ${x.materials}`}
                     </span>
