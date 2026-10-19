@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useSessio } from "../lib/sessio";
+import EditorMaterials, { MATERIALS_PREVENTIU, carregarMaterials, desarMaterials, totalMaterials, validarMaterials, type Material } from "../components/Materials";
 import {
   CATEGORIES, ESTATS_OBERTS, NOM_CATEGORIA, NOM_ESTAT, dataCurta,
   type Categoria, type Estat, type Persona, type Zona,
@@ -21,7 +22,6 @@ type Tasca = {
   pressupost: number | null;
   arxivada_el: string | null;
 };
-type Material = { id?: number; nom: string; quantitat: string; unitat: string; cost_estimat: string };
 type Execucio = { id: number; preventiu_id: string; estat: Estat; cost: number | null; materials: string | null; creada_el: string; resolta_el: string | null };
 
 const PERIODES: [number, string][] = [[7, "Setmanal"], [15, "Quinzenal"], [30, "Mensual"], [90, "Trimestral"], [180, "Semestral"], [365, "Anual"]];
@@ -252,17 +252,12 @@ function Editor(p: PropsEditor) {
   useEffect(() => {
     dialeg.current?.showModal();
     if (tasca) {
-      supabase.from("preventiu_materials").select("*").eq("preventiu_id", tasca.id).order("id").then(({ data }) => {
-        setMaterials((data ?? []).map((m) => ({
-          id: copia ? undefined : m.id, nom: m.nom, quantitat: String(m.quantitat).replace(".", ","),
-          unitat: m.unitat ?? "", cost_estimat: m.cost_estimat == null ? "" : String(m.cost_estimat).replace(".", ","),
-        })));
-      });
+      carregarMaterials(MATERIALS_PREVENTIU, tasca.id, copia).then(setMaterials);
     }
   }, [tasca, copia]);
 
   const posar = (k: keyof typeof f, v: string) => setF({ ...f, [k]: v });
-  const totalPrevist = materials.reduce((s, m) => s + (num(m.cost_estimat) ?? 0) * (num(m.quantitat) ?? 1), 0);
+  const totalPrevist = totalMaterials(materials);
   const tancades = p.execucions.filter((x) => x.estat === "resolta");
   const gastMitja = tancades.length ? tancades.reduce((s, x) => s + (x.cost ?? 0), 0) / tancades.length : null;
   const zonesPerPlanta = useMemo(() => {
@@ -281,21 +276,13 @@ function Editor(p: PropsEditor) {
     const e2: Record<string, string> = {};
     if (!Number.isInteger(dies) || dies < 1) e2.periodicitat = "Ha de ser un nombre de dies sencer (1 o més).";
     if (pressupost !== null && (Number.isNaN(pressupost) || pressupost < 0)) e2.pressupost = "Escriu un import, per exemple 45,00.";
-    materials.forEach((m, k) => {
-      const buida = !m.nom.trim() && !m.cost_estimat.trim() && (!m.quantitat.trim() || m.quantitat.trim() === "1") && !m.unitat.trim();
-      if (buida) return; // fila buida: es descarta sense dir res
-      if (!m.nom.trim()) e2[`mat-${k}-nom`] = "Falta el nom del material (o treu la fila amb ✕).";
-      const q = num(m.quantitat), c = num(m.cost_estimat);
-      if (q === null || Number.isNaN(q) || q <= 0) e2[`mat-${k}-quantitat`] = "La quantitat ha de ser més gran que 0.";
-      if (c !== null && (Number.isNaN(c) || c < 0)) e2[`mat-${k}-cost`] = "El cost ha de ser un import, per exemple 12,50.";
-    });
+    Object.assign(e2, validarMaterials(materials));
     setErrors(e2);
     if (Object.keys(e2).length) {
       // Porta la persona al primer camp amb error.
       setTimeout(() => (dialeg.current?.querySelector('[aria-invalid="true"]') as HTMLElement | null)?.focus(), 0);
       return;
     }
-    const mats = materials.filter((m) => m.nom.trim());
     setDesant(true);
     const fila = {
       tasca: f.tasca.trim(), zona_id: f.zona_id || null, categoria: f.categoria, periodicitat_dies: dies,
@@ -311,12 +298,7 @@ function Editor(p: PropsEditor) {
       return;
     }
     const id = r.data.id as string;
-    if (esborrats.length) await supabase.from("preventiu_materials").delete().in("id", esborrats);
-    for (const m of mats) {
-      const dades = { preventiu_id: id, nom: m.nom.trim(), quantitat: num(m.quantitat)!, unitat: m.unitat.trim() || null, cost_estimat: num(m.cost_estimat) };
-      if (m.id) await supabase.from("preventiu_materials").update(dades).eq("id", m.id);
-      else await supabase.from("preventiu_materials").insert(dades);
-    }
+    await desarMaterials(MATERIALS_PREVENTIU, id, materials, esborrats);
     setDesant(false);
     p.onDesat(nova ? "Tasca creada." : "Canvis desats.");
   }
@@ -390,43 +372,11 @@ function Editor(p: PropsEditor) {
 
           <div className="materials">
             <div className="materials-cap">
-              <h3>Materials previstos</h3>
-              {materials.length > 0 && <span className="xifra">Total previst: {euros(totalPrevist)}</span>}
+              <h3>Materials</h3>
+              {materials.length > 0 && <span className="xifra">Total: {euros(totalPrevist)}</span>}
             </div>
-            {materials.length === 0 && <p className="buit">Cap material previst.</p>}
-            {materials.map((m, k) => (
-              <div key={m.id ?? `n${k}`} className="material-fila">
-                <div className="material">
-                  <input aria-label="Nom del material" placeholder="Nom (p. ex. filtre G4)" value={m.nom}
-                    aria-invalid={!!err(`mat-${k}-nom`)} aria-describedby={`e-mat-${k}`}
-                    onChange={(e) => { setMaterials(materials.map((x, j) => j === k ? { ...x, nom: e.target.value } : x)); treureError(`mat-${k}-nom`); }} />
-                  <input aria-label="Quantitat" inputMode="decimal" className="curt" value={m.quantitat}
-                    aria-invalid={!!err(`mat-${k}-quantitat`)} aria-describedby={`e-mat-${k}`}
-                    onChange={(e) => { setMaterials(materials.map((x, j) => j === k ? { ...x, quantitat: e.target.value } : x)); treureError(`mat-${k}-quantitat`); }} />
-                  <input aria-label="Unitat" placeholder="u." className="curt" value={m.unitat}
-                    onChange={(e) => setMaterials(materials.map((x, j) => j === k ? { ...x, unitat: e.target.value } : x))} />
-                  <input aria-label="Cost per unitat (€)" placeholder="€/u." inputMode="decimal" className="curt" value={m.cost_estimat}
-                    aria-invalid={!!err(`mat-${k}-cost`)} aria-describedby={`e-mat-${k}`}
-                    onChange={(e) => { setMaterials(materials.map((x, j) => j === k ? { ...x, cost_estimat: e.target.value } : x)); treureError(`mat-${k}-cost`); }} />
-                  {!nomesLectura && (
-                    <button type="button" className="treure" aria-label={`Treure ${m.nom || "material"}`} onClick={() => {
-                      if (m.id) setEsborrats([...esborrats, m.id]);
-                      setMaterials(materials.filter((_, j) => j !== k));
-                      setErrors({});
-                    }}>✕</button>
-                  )}
-                </div>
-                {(err(`mat-${k}-nom`) || err(`mat-${k}-quantitat`) || err(`mat-${k}-cost`)) && (
-                  <span id={`e-mat-${k}`} className="error-camp">
-                    {[err(`mat-${k}-nom`), err(`mat-${k}-quantitat`), err(`mat-${k}-cost`)].filter(Boolean).join(" ")}
-                  </span>
-                )}
-              </div>
-            ))}
-            {!nomesLectura && (
-              <button type="button" className="boto secundari petit" style={{ alignSelf: "flex-start" }}
-                onClick={() => setMaterials([...materials, { nom: "", quantitat: "1", unitat: "", cost_estimat: "" }])}>+ Afegir material</button>
-            )}
+            <EditorMaterials materials={materials} onChange={setMaterials} errors={errors} onNetejarError={treureError} nomesLectura={nomesLectura}
+              onTreure={(m) => { if (m.id) setEsborrats([...esborrats, m.id]); setMaterials(materials.filter((x) => x !== m)); setErrors({}); }} />
           </div>
         </fieldset>
 

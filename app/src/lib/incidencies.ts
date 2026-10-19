@@ -18,6 +18,7 @@ export type Incidencia = {
   assignada_a: string | null;
   cal_repassar: boolean;
   cost: number | null;
+  altres_costos: number | null;
   materials: string | null;
   observacions: string | null;
   creada_el: string;
@@ -98,6 +99,7 @@ export const NOM_CAMP: Record<string, string> = {
   categoria: "Categoria",
   assignada_a: "Assignada a",
   cost: "Cost",
+  altres_costos: "Altres costos",
   materials: "Materials",
   observacions: "Observacions",
   cal_repassar: "Cal repassar",

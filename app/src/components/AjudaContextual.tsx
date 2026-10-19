@@ -13,6 +13,7 @@ function apartatsDe(ruta: string): string[] {
   if (ruta.startsWith("/preventiu")) return ["preventiu", "resum"];
   if (ruta.startsWith("/informes")) return ["informes"];
   if (ruta.startsWith("/configuracio")) return ["configuracio", "entrar"];
+  if (ruta.startsWith("/perfil")) return ["entrar"];
   return ["visio"];
 }
 

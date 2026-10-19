@@ -127,16 +127,17 @@ export const apartats: Apartat[] = [
         <Passos>
           <li>Escribe tu correo y pulsa <B>Envia'm l'enllaç</B> (envíame el enlace). No hay contraseña.</li>
           <li>Abre el correo «Entra al panell de manteniment» y pulsa <B>Entrar al panell</B>. <strong>Hazlo en el mismo navegador</strong> donde lo pediste.</li>
-          <li>El enlace funciona una sola vez y caduca en una hora. La sesión queda abierta en ese dispositivo hasta que pulses <B>Sortir</B> (salir).</li>
+          <li>El enlace funciona una sola vez y caduca en una hora. La sesión queda abierta en ese dispositivo hasta que pulses <B>Sortir</B> (salir) o hasta que pasen <strong>12 horas sin usarlo</strong>; entonces hay que pedir un enlace nuevo.</li>
         </Passos>
-        <p>Solo pueden entrar las personas que Dirección ha invitado. Si alguien entra con un correo no invitado, queda <em>Pendent d'aprovació</em> (pendiente de aprobación) y no ve ningún dato hasta que Dirección lo aprueba.</p>
+        <p>Solo pueden entrar los correos que Dirección ha invitado: con cualquier otro correo no se envía ningún enlace. Pulsando tu nombre, abajo del menú, abres <strong>El meu perfil</strong> (mi perfil), donde ves tus datos y puedes cambiar el nombre.</p>
         <Nota tipus="consell">En cada pantalla, el botón <B>? Ajuda</B> de abajo a la derecha abre la ayuda de esa pantalla sin salir de ella.</Nota>
         <h3>Qué puede hacer cada rol</h3>
         <div className="taula-caixa">
           <table>
             <thead><tr><th></th><th>Dirección</th><th>Administración</th><th>Mantenimiento</th></tr></thead>
             <tbody>
-              <tr><td>Ver incidencias, mapa e informes</td><td>✔</td><td>✔</td><td>✔</td></tr>
+              <tr><td>Ver incidencias y mapa</td><td>✔</td><td>✔</td><td>✔</td></tr>
+              <tr><td>Ver los informes</td><td>✔</td><td>✔</td><td>—</td></tr>
               <tr><td>Cambiar estado, prioridad, coste y notas</td><td>✔</td><td>✔</td><td>✔</td></tr>
               <tr><td>Gestionar el mantenimiento preventivo</td><td>✔</td><td>✔</td><td>Solo consultar</td></tr>
               <tr><td>Configuración (resumen, zonas, equipo, usuarios)</td><td>✔</td><td>—</td><td>—</td></tr>
@@ -167,7 +168,8 @@ export const apartats: Apartat[] = [
           <li><strong>Fotos y audios</strong> del grupo. Pulsa una foto para verla en grande; pasa de una a otra con las flechas (o deslizando el dedo en el móvil). Esc o ✕ para cerrar.</li>
           <li><strong>Mensajes del grupo</strong> relacionados, con la transcripción de los audios.</li>
           <li><strong>Historial de cambios</strong>: quién cambió qué y cuándo (desde Telegram o desde el panel).</li>
-          <li><strong>Gestió</strong> (a la derecha): estado, prioridad, categoría, a quién está asignada, coste, materiales, observaciones y «Cal repassar-la». Pulsa <B>Desar canvis</B> (guardar); cada cambio queda en el historial.</li>
+          <li><strong>Gestió</strong> (a la derecha): estado, prioridad, categoría, a quién está asignada, observaciones y «Cal repassar-la». Pulsa <B>Desar canvis</B> (guardar); cada cambio queda en el historial.</li>
+          <li><strong>Materials i costos</strong>: la lista de materiales usados (nombre, cantidad, unidad y precio por unidad) y <strong>otros costes</strong> (mano de obra, proveedor externo…). El <strong>coste total</strong> se calcula solo. Pulsa <B>Desar materials i costos</B>.</li>
           <li><strong>Altres a…</strong>: las demás incidencias de la misma habitación o zona, y el enlace <B>Veure al mapa</B>.</li>
         </ul>
         <Nota>Apuntar el <strong>coste y los materiales</strong> al cerrar una incidencia hace que los informes y el control del presupuesto preventivo sean útiles.</Nota>
@@ -179,7 +181,7 @@ export const apartats: Apartat[] = [
     titol: "8. Panel: Mapa de l'hotel",
     cos: (
       <>
-        <p>Las plantas con todas las habitaciones y, debajo, las zonas comunes y técnicas. Cada casilla se colorea según lo que tiene abierto:</p>
+        <p>Las plantas con todas las habitaciones, separadas en <strong>parte vieja</strong> y <strong>parte nueva</strong> (con la zona general de cada parte junto al título) y, debajo, las zonas comunes y técnicas. Cada casilla se colorea según lo que tiene abierto:</p>
         <ul>
           <li><span className="mostra-ajuda urgent" /> <strong>Rojo</strong>: alguna incidencia urgente o alta.</li>
           <li><span className="mostra-ajuda pendent" /> <strong>Arena</strong>: alguna pendiente.</li>
@@ -200,7 +202,7 @@ export const apartats: Apartat[] = [
         <Passos>
           <li>Pulsa <B>Nova tasca</B> (o <B>Obrir</B> en una existente).</li>
           <li>Rellena qué hay que hacer, el lugar (o «Tot l'hotel»), la categoría, la <strong>frecuencia</strong> (semanal, mensual, trimestral… o un número de días) y la <strong>próxima vez</strong>.</li>
-          <li>Opcional: <strong>responsable</strong> (se le asignará la incidencia), <strong>presupuesto por vez</strong>, instrucciones y <strong>materiales previstos</strong> (nombre, cantidad, unidad y coste; el total se calcula solo).</li>
+          <li>Opcional: <strong>responsable</strong> (se le asignará la incidencia), <strong>presupuesto por vez</strong>, instrucciones y <strong>materiales</strong> (nombre, cantidad, unidad y coste; el total se calcula solo).</li>
           <li>Pulsa <B>Desar canvis</B>. Si hay algún campo por revisar, aparece marcado en rojo con la explicación debajo.</li>
         </Passos>
         <h3>Acciones</h3>
@@ -246,7 +248,7 @@ export const apartats: Apartat[] = [
           <li><em>Servidor de correu</em>: los datos de manteniment@hotelrull.com. La contraseña no se guarda en el panel.</li>
         </ul>
         <h3>Zones de l'hotel</h3>
-        <p>Habitaciones, zonas comunes y técnicas. Puedes añadir, cambiar el nombre o la planta y poner <strong>otros nombres que usa el equipo</strong> («rest nou», «el de arriba»): el bot los entenderá enseguida. Las zonas con incidencias no se borran, se <B>Desactiven</B>.</p>
+        <p>Habitaciones, zonas comunes y técnicas, y las zonas generales de cada planta («Planta 2 · part nova»…). Puedes añadir, cambiar el nombre o la planta y poner <strong>otros nombres que usa el equipo</strong> («rest nou», «el de arriba»): el bot los entenderá enseguida. Las zonas con incidencias no se borran, se <B>Desactiven</B>.</p>
         <h3>Equip de Telegram</h3>
         <p>Las personas aparecen solas cuando escriben en el grupo por primera vez. Aquí puedes ponerles el nombre con el que las conocéis, el rol (Mantenimiento, Pisos, Recepción…) y desactivar a quien ya no esté.</p>
         <h3>Usuaris del panell</h3>
@@ -267,8 +269,10 @@ export const apartats: Apartat[] = [
         <dl className="faq-ajuda">
           <dt>No me llega el enlace para entrar al panel.</dt>
           <dd>Mira la carpeta de spam y espera un minuto. Comprueba que has escrito el correo con el que te invitaron. Si pides muchos enlaces seguidos, hay que esperar unos minutos.</dd>
-          <dt>Pone «Pendent d'aprovació».</dt>
-          <dd>Has entrado con un correo que no estaba invitado. Pide a Dirección que te apruebe en Configuració → Usuaris del panell y después pulsa «Ja m'han aprovat».</dd>
+          <dt>Pone «Aquest correu no té accés al panell».</dt>
+          <dd>Ese correo no está invitado. Pide a Dirección que te invite en Configuració → Usuaris del panell (o que corrija el correo de tu invitación).</dd>
+          <dt>Me ha hecho volver a entrar.</dt>
+          <dd>La sesión se cierra sola después de 12 horas sin usar el panel. Pide un enlace nuevo.</dd>
           <dt>El bot no ha respondido a mi aviso.</dt>
           <dd>Espera un minuto: lee los mensajes en grupos cada 30 segundos. Si era una conversación o no decía qué avería era, lo habrá ignorado. Vuelve a escribirlo con el lugar y qué pasa.</dd>
           <dt>El bot ha puesto una habitación o una prioridad equivocada.</dt>

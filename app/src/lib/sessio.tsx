@@ -12,6 +12,26 @@ type EstatSessio = {
 
 const Context = createContext<EstatSessio | null>(null);
 
+// Tancar la sessió després de 12 hores sense fer servir el panell (ordinadors compartits).
+const INACTIVITAT_MS = 12 * 3600e3;
+const CLAU_ACTIVITAT = "panell-darrera-activitat";
+let activitatMemoria = Date.now();
+function llegirActivitat(): number {
+  try {
+    const v = Number(localStorage.getItem(CLAU_ACTIVITAT));
+    return v > 0 ? v : activitatMemoria;
+  } catch {
+    return activitatMemoria;
+  }
+}
+function apuntarActivitat() {
+  activitatMemoria = Date.now();
+  try { localStorage.setItem(CLAU_ACTIVITAT, String(activitatMemoria)); } catch { /* sense emmagatzematge */ }
+}
+// Un inici de sessió recent (p. ex. l'enllaç del correu d'ara mateix) també compta com a activitat.
+const inactiuMassaTemps = (s: Session) =>
+  Date.now() - Math.max(llegirActivitat(), Date.parse(s.user.last_sign_in_at ?? "") || 0) > INACTIVITAT_MS;
+
 export function ProveidorSessio({ children }: { children: ReactNode }) {
   const [sessio, setSessio] = useState<Session | null>(null);
   const [usuari, setUsuari] = useState<Usuari | null>(null);
@@ -30,6 +50,11 @@ export function ProveidorSessio({ children }: { children: ReactNode }) {
     let viu = true;
     supabase.auth.getSession().then(async ({ data }) => {
       if (!viu) return;
+      if (data.session && inactiuMassaTemps(data.session)) {
+        await supabase.auth.signOut();
+        data = { session: null };
+      }
+      if (data.session) apuntarActivitat();
       setSessio(data.session);
       await carregarUsuari(data.session);
       if (data.session) supabase.rpc("registrar_acces").then(() => {});
@@ -40,12 +65,26 @@ export function ProveidorSessio({ children }: { children: ReactNode }) {
       // Fora del callback: Supabase recomana no esperar crides dins onAuthStateChange.
       setTimeout(async () => {
         await carregarUsuari(s);
-        if (event === "SIGNED_IN") supabase.rpc("registrar_acces").then(() => {});
+        if (event === "SIGNED_IN") {
+          apuntarActivitat();
+          supabase.rpc("registrar_acces").then(() => {});
+        }
       }, 0);
     });
+    // Qualsevol clic o tecla compta com a activitat (com a molt un cop per minut).
+    let darrer = 0;
+    const activitat = () => { if (Date.now() - darrer > 60e3) { darrer = Date.now(); apuntarActivitat(); } };
+    const esdeveniments = ["pointerdown", "keydown", "scroll", "focus"];
+    esdeveniments.forEach((e) => window.addEventListener(e, activitat, { passive: true }));
+    const rellotge = window.setInterval(async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session && inactiuMassaTemps(data.session)) await supabase.auth.signOut();
+    }, 5 * 60e3);
     return () => {
       viu = false;
       sub.subscription.unsubscribe();
+      esdeveniments.forEach((e) => window.removeEventListener(e, activitat));
+      window.clearInterval(rellotge);
     };
   }, [carregarUsuari]);
 

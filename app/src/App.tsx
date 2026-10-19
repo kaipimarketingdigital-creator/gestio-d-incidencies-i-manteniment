@@ -11,6 +11,7 @@ import Preventiu from "./pages/Preventiu";
 import Mapa from "./pages/Mapa";
 import Informes from "./pages/Informes";
 import Ajuda from "./pages/Ajuda";
+import Perfil from "./pages/Perfil";
 import logo from "./assets/logo-rull-blanc.png";
 
 export default function App() {
@@ -43,7 +44,8 @@ export default function App() {
         <Route path="incidencies/:id" element={<Fitxa />} />
         <Route path="preventiu" element={<Preventiu />} />
         <Route path="mapa" element={<Mapa />} />
-        <Route path="informes" element={<Informes />} />
+        <Route path="informes" element={usuari.rol === "manteniment" ? <Navigate to="/" replace /> : <Informes />} />
+        <Route path="perfil" element={<Perfil />} />
         <Route path="ajuda" element={<Ajuda />} />
         <Route path="configuracio" element={usuari.rol === "direccio" ? <Navigate to="/configuracio/resum" replace /> : <Navigate to="/" replace />} />
         <Route path="configuracio/:pestanya" element={usuari.rol === "direccio" ? <Configuracio /> : <Navigate to="/" replace />} />

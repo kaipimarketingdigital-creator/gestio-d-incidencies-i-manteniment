@@ -7,7 +7,7 @@ import {
   type Categoria, type Estat, type Prioritat,
 } from "../lib/incidencies";
 
-type ZonaMapa = { id: string; nom: string; tipus: "habitacio" | "comuna" | "tecnica" | string; planta: number | null };
+type ZonaMapa = { id: string; nom: string; tipus: "habitacio" | "comuna" | "tecnica" | string; planta: number | null; part: string | null };
 type Inc = {
   id: number; zona_id: string | null; descripcio: string; prioritat: Prioritat; estat: Estat;
   categoria: Categoria | null; creada_el: string; resolta_el: string | null; cost: number | null; preventiu_id: string | null;
@@ -48,7 +48,7 @@ export default function Mapa() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from("zones").select("id, nom, tipus, planta").eq("activa", true),
+      supabase.from("zones").select("id, nom, tipus, planta, part").eq("activa", true),
       supabase.from("incidencies").select("id, zona_id, descripcio, prioritat, estat, categoria, creada_el, resolta_el, cost, preventiu_id")
         .order("creada_el", { ascending: false }).limit(5000),
     ]).then(([z, i]) => {
@@ -71,18 +71,29 @@ export default function Mapa() {
     return m;
   }, [incs, desde]);
 
+  // Zones que van dins d'una planta: habitacions i zones generals de planta (p. ex. «Planta 2 · part nova»).
+  const dePlanta = (z: ZonaMapa) => z.planta !== null && (z.tipus === "habitacio" || !!z.part);
   const plantes = useMemo(() => {
-    const hab = zones.filter((z) => z.tipus === "habitacio" && z.planta !== null);
-    const nums = [...new Set(hab.map((z) => z.planta!))].sort((a, b) => a - b);
-    // Cada planta en files: el passadís principal (x01–x19) i l'ala (x21 en endavant).
-    const fila = (z: ZonaMapa) => (Number(z.nom) % 100 >= 20 ? 1 : 0);
+    const zs = zones.filter(dePlanta);
+    const nums = [...new Set(zs.map((z) => z.planta!))].sort((a, b) => a - b);
+    // Cada planta en files per part (vella / nova). Si una habitació no té part, va a la fila de la seva desena.
+    const part = (z: ZonaMapa) => z.part ?? (Number(z.nom) % 100 >= 20 ? "nova" : "vella");
+    const NOM_PART: Record<string, string> = { vella: "Part vella", nova: "Part nova" };
     return nums.map((n) => {
-      const zs = hab.filter((z) => z.planta === n).sort(ordreNum);
-      return { nom: n === 0 ? "Planta baixa" : `Planta ${n}`, files: [0, 1].map((f) => zs.filter((z) => fila(z) === f)).filter((f) => f.length) };
+      const daquesta = zs.filter((z) => z.planta === n);
+      const parts = ["vella", "nova", ...new Set(daquesta.map(part))].filter((v, k, arr) => arr.indexOf(v) === k);
+      return {
+        nom: n === 0 ? "Planta baixa" : `Planta ${n}`,
+        files: parts.map((pt) => ({
+          nom: NOM_PART[pt] ?? pt,
+          habs: daquesta.filter((z) => z.tipus === "habitacio" && part(z) === pt).sort(ordreNum),
+          generals: daquesta.filter((z) => z.tipus !== "habitacio" && part(z) === pt),
+        })).filter((f) => f.habs.length || f.generals.length),
+      };
     });
-  }, [zones]);
-  const altres = useMemo(() => zones.filter((z) => !(z.tipus === "habitacio" && z.planta !== null)).sort((a, b) =>
-    (a.tipus === "habitacio" ? 0 : a.tipus === "comuna" ? 1 : 2) - (b.tipus === "habitacio" ? 0 : b.tipus === "comuna" ? 1 : 2) || ordreNum(a, b)), [zones]);
+  }, [zones]); // eslint-disable-line react-hooks/exhaustive-deps
+  const altres = useMemo(() => zones.filter((z) => !dePlanta(z)).sort((a, b) =>
+    (a.tipus === "habitacio" ? 0 : a.tipus === "comuna" ? 1 : 2) - (b.tipus === "habitacio" ? 0 : b.tipus === "comuna" ? 1 : 2) || ordreNum(a, b)), [zones]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalObertes = (incs ?? []).filter((i) => ESTATS_OBERTS.includes(i.estat)).length;
   const senseLloc = (incs ?? []).filter((i) => !i.zona_id && ESTATS_OBERTS.includes(i.estat)).length;
@@ -132,7 +143,15 @@ export default function Mapa() {
           {plantes.map((p) => (
             <section key={p.nom} className="targeta" aria-label={p.nom}>
               <h2>{p.nom}</h2>
-              {p.files.map((f, k) => <div key={k} className="graella">{f.map((z) => <Casella key={z.id} z={z} />)}</div>)}
+              {p.files.map((f) => (
+                <div key={f.nom} className="fila-part">
+                  <div className="cap-part">
+                    <span>{f.nom}</span>
+                    {f.generals.map((z) => <Casella key={z.id} z={z} xip />)}
+                  </div>
+                  {f.habs.length > 0 && <div className="graella">{f.habs.map((z) => <Casella key={z.id} z={z} />)}</div>}
+                </div>
+              ))}
             </section>
           ))}
           {altres.length > 0 && (

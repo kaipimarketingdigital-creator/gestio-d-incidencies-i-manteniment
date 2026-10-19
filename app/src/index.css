@@ -374,3 +374,38 @@ tr.apagada strong { font-weight: 600; }
 .boto-ajuda:focus-visible { outline: 3px solid var(--marca); outline-offset: 2px; }
 .contingut { padding-bottom: 88px; }
 @media print { .boto-ajuda { display: none !important; } }
+.fila-part { display: flex; flex-direction: column; gap: 8px; }
+.fila-part + .fila-part { margin-top: 6px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.cap-part { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cap-part > span { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.cap-part .xip-zona { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+
+/* ---------- Menú: barra superior + calaix al mòbil */
+.barra-mobil { display: none; }
+.peu-menu a.qui { color: #cfe0f0; text-decoration: none; font-size: 13px; overflow-wrap: anywhere; border-radius: 4px; padding: 4px 6px; margin: 0 -6px; }
+.peu-menu a.qui:hover, .peu-menu a.qui.actiu { background: rgba(255, 255, 255, .1); color: #fff; }
+.dades-perfil { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0; font-size: 15px; }
+.dades-perfil dt { color: var(--muted); }
+.dades-perfil dd { margin: 0; }
+@media (max-width: 819px) {
+  .app { display: block; }
+  .barra-mobil {
+    display: flex; position: sticky; top: 0; z-index: 30; height: 60px; padding: 0 8px 0 16px;
+    align-items: center; justify-content: space-between; background: var(--marca); box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+  }
+  .barra-mobil img { height: 34px; width: auto; }
+  .hamburguesa { width: 48px; height: 48px; border: 0; background: transparent; color: #fff; font-size: 26px; line-height: 1; cursor: pointer; border-radius: 4px; }
+  .hamburguesa:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+  .menu {
+    position: fixed; z-index: 29; top: 60px; left: 0; bottom: 0; width: min(300px, 85vw); max-width: none;
+    overflow-y: auto; transform: translateX(-100%); transition: transform .2s ease; visibility: hidden;
+  }
+  .menu.obert { transform: none; visibility: visible; }
+  .menu .marca { display: none; }
+  .vel-menu { position: fixed; inset: 60px 0 0 0; z-index: 28; background: rgba(10, 22, 34, .45); }
+}
+@media (max-width: 819px) and (prefers-reduced-motion: reduce) { .menu { transition: none; } }
+@media print { .barra-mobil, .vel-menu { display: none !important; } }
+.capcal-materials span { flex: 3 1 160px; min-width: 0; font-size: 12px; color: var(--muted); padding-left: 2px; }
+.capcal-materials span.curt { flex: 1 1 64px; }
+.capcal-materials .treure-espai { flex: 0 0 36px; }

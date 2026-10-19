@@ -153,8 +153,24 @@ export default function Usuaris({ incrustat = false }: { incrustat?: boolean }) 
                 const socJo = u.id === jo?.id;
                 return (
                   <tr key={u.id}>
-                    <td>{u.nom ?? "—"}{socJo && " (tu)"}</td>
-                    <td>{u.email}</td>
+                    <td>
+                      <input className="input-taula" aria-label={`Nom de ${u.email}`} defaultValue={u.nom ?? ""} placeholder="Sense nom"
+                        onBlur={(e) => { const v = e.target.value.trim(); if (v !== (u.nom ?? "")) canviar(u, { nom: v || null }, `Nom desat: ${v || "(sense nom)"}.`); }} />
+                      {socJo && <span className="sota">(tu)</span>}
+                    </td>
+                    <td>
+                      {u.auth_id ? (
+                        <span title="Ja ha entrat amb aquest correu: no es pot canviar. Si cal, desactiva'l i convida el correu nou.">{u.email}</span>
+                      ) : (
+                        <input className="input-taula" type="email" aria-label={`Correu de la invitació de ${u.nom ?? u.email}`} defaultValue={u.email}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim().toLowerCase();
+                            if (v === u.email) return;
+                            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { e.target.value = u.email; setAvis({ tipus: "error", text: "Aquest correu no sembla vàlid." }); return; }
+                            canviar(u, { email: v }, `Invitació canviada a ${v}.`);
+                          }} />
+                      )}
+                    </td>
                     <td>
                       <select aria-label={`Rol de ${u.email}`} value={u.rol ?? ""} disabled={u.estat === "desactivat"}
                         onChange={(e) => canviar(u, { rol: e.target.value as Rol }, `Rol de ${u.email} canviat a ${NOM_ROL[e.target.value as Rol]}.`)}>

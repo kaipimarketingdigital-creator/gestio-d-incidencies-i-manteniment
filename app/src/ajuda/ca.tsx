@@ -125,16 +125,17 @@ export const apartats: Apartat[] = [
         <Passos>
           <li>Escriu el teu correu i prem <B>Envia'm l'enllaç</B>. No hi ha contrasenya.</li>
           <li>Obre el correu «Entra al panell de manteniment» i prem <B>Entrar al panell</B>. <strong>Fes-ho al mateix navegador</strong> on l'has demanat.</li>
-          <li>L'enllaç funciona una sola vegada i caduca en una hora. La sessió queda oberta en aquell dispositiu fins que premis <B>Sortir</B>.</li>
+          <li>L'enllaç funciona una sola vegada i caduca en una hora. La sessió queda oberta en aquell dispositiu fins que premis <B>Sortir</B> o fins que passen <strong>12 hores sense fer-lo servir</strong>; llavors cal demanar un enllaç nou.</li>
         </Passos>
-        <p>Només hi poden entrar les persones que Direcció ha convidat. Si algú entra amb un correu no convidat, queda <em>Pendent d'aprovació</em> i no veu cap dada fins que Direcció l'aprova.</p>
+        <p>Només hi poden entrar els correus que Direcció ha convidat: amb qualsevol altre correu no s'envia cap enllaç. Prement el teu nom, a baix del menú, obres <strong>El meu perfil</strong>, on veus les teves dades i pots canviar el nom.</p>
         <Nota tipus="consell">A cada pantalla, el botó <B>? Ajuda</B> de baix a la dreta obre l'ajuda d'aquella pantalla sense sortir-ne.</Nota>
         <h3>Què pot fer cada rol</h3>
         <div className="taula-caixa">
           <table>
             <thead><tr><th></th><th>Direcció</th><th>Administració</th><th>Manteniment</th></tr></thead>
             <tbody>
-              <tr><td>Veure incidències, mapa i informes</td><td>✔</td><td>✔</td><td>✔</td></tr>
+              <tr><td>Veure incidències i mapa</td><td>✔</td><td>✔</td><td>✔</td></tr>
+              <tr><td>Veure els informes</td><td>✔</td><td>✔</td><td>—</td></tr>
               <tr><td>Canviar estat, prioritat, cost i notes</td><td>✔</td><td>✔</td><td>✔</td></tr>
               <tr><td>Gestionar el manteniment preventiu</td><td>✔</td><td>✔</td><td>Només consultar</td></tr>
               <tr><td>Configuració (resum, zones, equip, usuaris)</td><td>✔</td><td>—</td><td>—</td></tr>
@@ -165,7 +166,8 @@ export const apartats: Apartat[] = [
           <li><strong>Fotos i àudios</strong> del grup. Prem una foto per veure-la gran; passa d'una a l'altra amb les fletxes (o lliscant el dit al mòbil). Esc o ✕ per tancar.</li>
           <li><strong>Missatges del grup</strong> relacionats, amb la transcripció dels àudios.</li>
           <li><strong>Historial de canvis</strong>: qui va canviar què i quan (des de Telegram o des del panell).</li>
-          <li><strong>Gestió</strong> (a la dreta): estat, prioritat, categoria, a qui està assignada, cost, materials, observacions i «Cal repassar-la». Prem <B>Desar canvis</B>; cada canvi queda a l'historial.</li>
+          <li><strong>Gestió</strong> (a la dreta): estat, prioritat, categoria, a qui està assignada, observacions i «Cal repassar-la». Prem <B>Desar canvis</B>; cada canvi queda a l'historial.</li>
+          <li><strong>Materials i costos</strong>: la llista de materials utilitzats (nom, quantitat, unitat i preu per unitat) i <strong>altres costos</strong> (mà d'obra, proveïdor extern…). El <strong>cost total</strong> es calcula sol. Prem <B>Desar materials i costos</B>.</li>
           <li><strong>Altres a aquest lloc</strong>: les altres incidències de la mateixa habitació o zona, i l'enllaç <B>Veure al mapa</B>.</li>
         </ul>
         <Nota>Apuntar el <strong>cost i els materials</strong> en tancar una incidència fa que els informes i el control del pressupost preventiu siguin útils.</Nota>
@@ -177,7 +179,7 @@ export const apartats: Apartat[] = [
     titol: "8. Panell: Mapa de l'hotel",
     cos: (
       <>
-        <p>Les plantes amb totes les habitacions, i a sota les zones comunes i tècniques. Cada casella es pinta segons el que hi ha obert:</p>
+        <p>Les plantes amb totes les habitacions, separades en <strong>part vella</strong> i <strong>part nova</strong> (amb la zona general de cada part al costat del títol), i a sota les zones comunes i tècniques. Cada casella es pinta segons el que hi ha obert:</p>
         <ul>
           <li><span className="mostra-ajuda urgent" /> <strong>Vermell</strong>: alguna incidència urgent o alta.</li>
           <li><span className="mostra-ajuda pendent" /> <strong>Sorra</strong>: alguna de pendent.</li>
@@ -198,7 +200,7 @@ export const apartats: Apartat[] = [
         <Passos>
           <li>Prem <B>Nova tasca</B> (o <B>Obrir</B> en una d'existent).</li>
           <li>Omple què cal fer, el lloc (o «Tot l'hotel»), la categoria, la <strong>freqüència</strong> (setmanal, mensual, trimestral… o un nombre de dies) i la <strong>propera vegada</strong>.</li>
-          <li>Opcional: <strong>responsable</strong> (se li assignarà la incidència), <strong>pressupost per vegada</strong>, instruccions i <strong>materials previstos</strong> (nom, quantitat, unitat i cost; el total es calcula sol).</li>
+          <li>Opcional: <strong>responsable</strong> (se li assignarà la incidència), <strong>pressupost per vegada</strong>, instruccions i <strong>materials</strong> (nom, quantitat, unitat i cost; el total es calcula sol).</li>
           <li>Prem <B>Desar canvis</B>. Si hi ha algun camp per revisar, surt marcat en vermell amb l'explicació a sota.</li>
         </Passos>
         <h3>Accions</h3>
@@ -244,7 +246,7 @@ export const apartats: Apartat[] = [
           <li><em>Servidor de correu</em>: les dades de manteniment@hotelrull.com. La contrasenya no es guarda al panell.</li>
         </ul>
         <h3>Zones de l'hotel</h3>
-        <p>Habitacions, zones comunes i tècniques. Pots afegir-ne, canviar-ne el nom o la planta i posar-hi <strong>altres noms que fa servir l'equip</strong> («rest nou», «el de dalt»): el bot els entendrà de seguida. Les zones amb incidències no s'esborren, es <B>Desactiven</B>.</p>
+        <p>Habitacions, zones comunes i tècniques, i les zones generals de cada planta («Planta 2 · part nova»…). Pots afegir-ne, canviar-ne el nom o la planta i posar-hi <strong>altres noms que fa servir l'equip</strong> («rest nou», «el de dalt»): el bot els entendrà de seguida. Les zones amb incidències no s'esborren, es <B>Desactiven</B>.</p>
         <h3>Equip de Telegram</h3>
         <p>Les persones apareixen soles quan escriuen al grup per primera vegada. Aquí els pots posar el nom com el coneixeu, el rol (Manteniment, Pisos, Recepció…) i desactivar qui ja no hi és.</p>
         <h3>Usuaris del panell</h3>
@@ -265,8 +267,10 @@ export const apartats: Apartat[] = [
         <dl className="faq-ajuda">
           <dt>No m'arriba l'enllaç per entrar al panell.</dt>
           <dd>Mira la carpeta de correu brossa i espera un minut. Comprova que has escrit el correu amb què et van convidar. Si demanes molts enllaços seguits, cal esperar uns minuts.</dd>
-          <dt>Diu «Pendent d'aprovació».</dt>
-          <dd>Has entrat amb un correu que no estava convidat. Demana a Direcció que t'aprovi a Configuració → Usuaris del panell i després prem «Ja m'han aprovat».</dd>
+          <dt>Diu «Aquest correu no té accés al panell».</dt>
+          <dd>Aquest correu no està convidat. Demana a Direcció que et convidi a Configuració → Usuaris del panell (o que corregeixi el correu de la teva invitació).</dd>
+          <dt>M'ha fet tornar a entrar.</dt>
+          <dd>La sessió es tanca sola després de 12 hores sense fer servir el panell. Demana un enllaç nou.</dd>
           <dt>El bot no ha respost al meu avís.</dt>
           <dd>Espera un minut: llegeix els missatges en grups cada 30 segons. Si era una conversa o no deia quina avaria era, l'haurà ignorat. Torna-ho a escriure amb el lloc i què passa.</dd>
           <dt>El bot ha posat una habitació o una prioritat equivocada.</dt>

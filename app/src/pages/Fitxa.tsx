@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import Visor, { type Element } from "../components/Visor";
+import EditorMaterials, { MATERIALS_INCIDENCIA, carregarMaterials, desarMaterials, euros, num as numero, totalMaterials, validarMaterials, type Material } from "../components/Materials";
 import { useSessio } from "../lib/sessio";
 import {
   CATEGORIES, ESTATS, ESTATS_OBERTS, NOM_CAMP, NOM_CATEGORIA, NOM_ESTAT, NOM_PRIORITAT, PRIORITATS,
@@ -14,16 +15,20 @@ type Missatge = { id: number; text: string | null; transcripcio: string | null; 
 type CanviHistorial = { id: number; camp: string; valor_anterior: string | null; valor_nou: string | null; canviat_el: string; persona_id: string | null; usuari_id: string | null };
 type Formulari = {
   estat: Estat; prioritat: Prioritat; categoria: Categoria | ""; assignada_a: string;
-  cost: string; materials: string; observacions: string; cal_repassar: boolean;
+  observacions: string; cal_repassar: boolean;
 };
 
 function formulariDe(i: Incidencia): Formulari {
   return {
     estat: i.estat, prioritat: i.prioritat, categoria: i.categoria ?? "", assignada_a: i.assignada_a ?? "",
-    cost: i.cost === null ? "" : String(i.cost), materials: i.materials ?? "", observacions: i.observacions ?? "",
+    observacions: i.observacions ?? "",
     cal_repassar: i.cal_repassar,
   };
 }
+
+// Text curt per a l'historial: "Filtre G4 ×2; Silicona ×1".
+const resumMaterials = (ms: Material[]) =>
+  ms.filter((m) => m.nom.trim()).map((m) => `${m.nom.trim()} ×${m.quantitat.trim() || "1"}${m.cost.trim() ? ` (${m.cost.trim()} €)` : ""}`).join("; ");
 
 export default function Fitxa() {
   const { id } = useParams();
@@ -39,6 +44,12 @@ export default function Fitxa() {
   const [avis, setAvis] = useState<{ tipus: "ok" | "error"; text: string } | null>(null);
   const [desant, setDesant] = useState(false);
   const [errorCost, setErrorCost] = useState("");
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [materialsAbans, setMaterialsAbans] = useState("");
+  const [esborrats, setEsborrats] = useState<number[]>([]);
+  const [errorsMat, setErrorsMat] = useState<Record<string, string>>({});
+  const [altresCostos, setAltresCostos] = useState("");
+  const [desantMat, setDesantMat] = useState(false);
   const [noTrobada, setNoTrobada] = useState(false);
   const [visor, setVisor] = useState<number | null>(null);
 
@@ -51,6 +62,8 @@ export default function Fitxa() {
     const i = data as Incidencia;
     setInc(i);
     setForm(formulariDe(i));
+    setAltresCostos(i.altres_costos == null ? "" : String(i.altres_costos).replace(".", ","));
+    carregarMaterials(MATERIALS_INCIDENCIA, num).then((ms) => { setMaterials(ms); setMaterialsAbans(resumMaterials(ms)); setEsborrats([]); });
 
     supabase.rpc("noms_usuaris_panell").then(({ data }) => {
       setNomsUsuaris(new Map(((data ?? []) as { id: string; nom: string }[]).map((u) => [u.id, u.nom])));
@@ -102,16 +115,6 @@ export default function Fitxa() {
     comparar("prioritat", form.prioritat, t);
     comparar("categoria", form.categoria || null, t);
     comparar("assignada_a", form.assignada_a || null, (v) => nomPersona((v as string) || null));
-    if (abans.cost !== form.cost) {
-      const n = form.cost.trim() === "" ? null : Number(form.cost.replace(",", "."));
-      if (n !== null && (Number.isNaN(n) || n < 0)) {
-        setErrorCost("Escriu un import, per exemple 12,50.");
-        return;
-      }
-      canvis.cost = n;
-      files.push({ camp: "cost", valor_anterior: t(abans.cost), valor_nou: n === null ? null : String(n) });
-    }
-    comparar("materials", form.materials.trim() || null, t);
     comparar("observacions", form.observacions.trim() || null, t);
     comparar("cal_repassar", form.cal_repassar, (v) => (v ? "Sí" : "No"));
 
@@ -135,6 +138,35 @@ export default function Fitxa() {
     }
     setDesant(false);
     setAvis(error ? { tipus: "error", text: "No s'han pogut desar els canvis. Torna-ho a provar." } : { tipus: "ok", text: "Canvis desats." });
+    await carregar();
+  }
+
+  async function desarMats() {
+    if (!inc) return;
+    const e2 = validarMaterials(materials);
+    const altres = numero(altresCostos);
+    if (altres !== null && (Number.isNaN(altres) || altres < 0)) e2.altres = "Escriu un import, per exemple 45,00.";
+    setErrorsMat(e2);
+    if (Object.keys(e2).length) {
+      setTimeout(() => (document.querySelector('.targeta-materials [aria-invalid="true"]') as HTMLElement | null)?.focus(), 0);
+      return;
+    }
+    setDesantMat(true);
+    const files: { camp: string; valor_anterior: string | null; valor_nou: string | null }[] = [];
+    let ok = true;
+    if ((inc.altres_costos ?? null) !== altres) {
+      ok = !(await supabase.from("incidencies").update({ altres_costos: altres }).eq("id", inc.id)).error;
+      files.push({ camp: "altres_costos", valor_anterior: inc.altres_costos == null ? null : euros(inc.altres_costos), valor_nou: altres == null ? null : euros(altres) });
+    }
+    const nous = resumMaterials(materials);
+    if (nous !== materialsAbans) {
+      ok = (await desarMaterials(MATERIALS_INCIDENCIA, inc.id, materials, esborrats)) && ok;
+      files.push({ camp: "materials", valor_anterior: materialsAbans || null, valor_nou: nous || null });
+    }
+    if (files.length) await supabase.from("historial").insert(files.map((f) => ({ ...f, incidencia_id: inc.id, persona_id: usuari?.persona_id ?? null })));
+    setDesantMat(false);
+    setAvis(!files.length ? { tipus: "ok", text: "No hi ha canvis per desar." }
+      : ok ? { tipus: "ok", text: "Materials i costos desats." } : { tipus: "error", text: "No s'han pogut desar tots els materials. Torna-ho a provar." });
     await carregar();
   }
 
@@ -205,6 +237,28 @@ export default function Fitxa() {
             </section>
           )}
 
+          <section className="targeta targeta-materials" aria-labelledby="t-mats">
+            <div className="materials-cap">
+              <h2 id="t-mats">Materials i costos</h2>
+              <span className="xifra">Cost total: <strong>{euros(totalMaterials(materials) + (numero(altresCostos) || 0))}</strong></span>
+            </div>
+            <EditorMaterials materials={materials} onChange={setMaterials} errors={errorsMat}
+              onNetejarError={(k) => { if (errorsMat[k]) { const r = { ...errorsMat }; delete r[k]; setErrorsMat(r); } }}
+              onTreure={(m) => { if (m.id) setEsborrats([...esborrats, m.id]); setMaterials(materials.filter((x) => x !== m)); setErrorsMat({}); }} />
+            <div className="fila-camps" style={{ alignItems: "flex-end" }}>
+              <label className="camp" style={{ maxWidth: 320 }}>Altres costos (mà d'obra, proveïdor…) €
+                <input inputMode="decimal" value={altresCostos} placeholder="0,00" aria-invalid={!!errorsMat.altres} aria-describedby="e-altres"
+                  onChange={(e) => { setAltresCostos(e.target.value); setErrorCost(""); if (errorsMat.altres) setErrorsMat({}); }} />
+                {errorsMat.altres && <span id="e-altres" className="error-camp">{errorsMat.altres}</span>}
+              </label>
+              <span className="buit" style={{ flex: "1 1 200px" }}>
+                Materials {euros(totalMaterials(materials))}{numero(altresCostos) ? ` + altres ${euros(numero(altresCostos)!)}` : ""}
+              </span>
+              <button type="button" className="boto" disabled={desantMat} onClick={desarMats}>{desantMat ? "Desant…" : "Desar materials i costos"}</button>
+            </div>
+            {errorCost && <span className="error-camp">{errorCost}</span>}
+          </section>
+
           {missatges.length > 0 && (
             <section className="targeta" aria-labelledby="t-xat">
               <h2 id="t-xat">Missatges del grup</h2>
@@ -264,14 +318,6 @@ export default function Fitxa() {
                 <option value="">Ningú</option>
                 {persones.filter((p) => p.actiu || p.id === form.assignada_a).map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
               </select>
-            </label>
-            <label className="camp">Cost (€)
-              <input inputMode="decimal" value={form.cost} placeholder="0,00" aria-invalid={!!errorCost} aria-describedby="e-cost"
-                onChange={(e) => { posar("cost", e.target.value); setErrorCost(""); }} />
-              {errorCost && <span id="e-cost" className="error-camp">{errorCost}</span>}
-            </label>
-            <label className="camp">Materials
-              <textarea rows={2} value={form.materials} onChange={(e) => posar("materials", e.target.value)} placeholder="Peces o material utilitzat" />
             </label>
             <label className="camp">Observacions
               <textarea rows={3} value={form.observacions} onChange={(e) => posar("observacions", e.target.value)} />

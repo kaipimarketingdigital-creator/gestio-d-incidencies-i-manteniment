@@ -18,7 +18,9 @@ export default function Entrar() {
     });
     if (error) {
       setError(
-        error.status === 429
+        /no té accés|not allowed|signups not allowed|403/i.test(`${error.message} ${error.status}`)
+          ? "Aquest correu no té accés al panell. Si l'has de fer servir, demana a Direcció que et convidi."
+          : error.status === 429
           ? "S'han demanat massa enllaços seguits. Espera uns minuts i torna-ho a provar."
           : "No s'ha pogut enviar l'enllaç. Revisa el correu i torna-ho a provar.",
       );
