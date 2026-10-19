@@ -372,7 +372,7 @@ function Editor(p: PropsEditor) {
 
           <div className="materials">
             <div className="materials-cap">
-              <h3>Materials</h3>
+              <h3>Costos</h3>
               {materials.length > 0 && <span className="xifra">Total: {euros(totalPrevist)}</span>}
             </div>
             <EditorMaterials materials={materials} onChange={setMaterials} errors={errors} onNetejarError={treureError} nomesLectura={nomesLectura}

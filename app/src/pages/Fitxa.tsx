@@ -43,7 +43,6 @@ export default function Fitxa() {
   const [altres, setAltres] = useState<Incidencia[]>([]);
   const [avis, setAvis] = useState<{ tipus: "ok" | "error"; text: string } | null>(null);
   const [desant, setDesant] = useState(false);
-  const [errorCost, setErrorCost] = useState("");
   const [materials, setMaterials] = useState<Material[]>([]);
   const [materialsAbans, setMaterialsAbans] = useState("");
   const [esborrats, setEsborrats] = useState<number[]>([]);
@@ -166,7 +165,7 @@ export default function Fitxa() {
     if (files.length) await supabase.from("historial").insert(files.map((f) => ({ ...f, incidencia_id: inc.id, persona_id: usuari?.persona_id ?? null })));
     setDesantMat(false);
     setAvis(!files.length ? { tipus: "ok", text: "No hi ha canvis per desar." }
-      : ok ? { tipus: "ok", text: "Materials i costos desats." } : { tipus: "error", text: "No s'han pogut desar tots els materials. Torna-ho a provar." });
+      : ok ? { tipus: "ok", text: "Costos desats." } : { tipus: "error", text: "No s'han pogut desar tots els costos. Torna-ho a provar." });
     await carregar();
   }
 
@@ -239,24 +238,15 @@ export default function Fitxa() {
 
           <section className="targeta targeta-materials" aria-labelledby="t-mats">
             <div className="materials-cap">
-              <h2 id="t-mats">Materials i costos</h2>
-              <span className="xifra">Cost total: <strong>{euros(totalMaterials(materials) + (numero(altresCostos) || 0))}</strong></span>
+              <h2 id="t-mats">Costos</h2>
+              <span className="xifra">Total: <strong>{euros(totalMaterials(materials) + (numero(altresCostos) || 0))}</strong></span>
             </div>
             <EditorMaterials materials={materials} onChange={setMaterials} errors={errorsMat}
               onNetejarError={(k) => { if (errorsMat[k]) { const r = { ...errorsMat }; delete r[k]; setErrorsMat(r); } }}
               onTreure={(m) => { if (m.id) setEsborrats([...esborrats, m.id]); setMaterials(materials.filter((x) => x !== m)); setErrorsMat({}); }} />
-            <div className="fila-camps" style={{ alignItems: "flex-end" }}>
-              <label className="camp" style={{ maxWidth: 320 }}>Altres costos (mà d'obra, proveïdor…) €
-                <input inputMode="decimal" value={altresCostos} placeholder="0,00" aria-invalid={!!errorsMat.altres} aria-describedby="e-altres"
-                  onChange={(e) => { setAltresCostos(e.target.value); setErrorCost(""); if (errorsMat.altres) setErrorsMat({}); }} />
-                {errorsMat.altres && <span id="e-altres" className="error-camp">{errorsMat.altres}</span>}
-              </label>
-              <span className="buit" style={{ flex: "1 1 200px" }}>
-                Materials {euros(totalMaterials(materials))}{numero(altresCostos) ? ` + altres ${euros(numero(altresCostos)!)}` : ""}
-              </span>
-              <button type="button" className="boto" disabled={desantMat} onClick={desarMats}>{desantMat ? "Desant…" : "Desar materials i costos"}</button>
+            <div className="accions" style={{ justifyContent: "flex-end" }}>
+              <button type="button" className="boto" disabled={desantMat} onClick={desarMats}>{desantMat ? "Desant…" : "Desar costos"}</button>
             </div>
-            {errorCost && <span className="error-camp">{errorCost}</span>}
           </section>
 
           {missatges.length > 0 && (

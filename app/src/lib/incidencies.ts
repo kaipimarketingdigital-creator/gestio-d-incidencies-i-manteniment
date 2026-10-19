@@ -100,7 +100,7 @@ export const NOM_CAMP: Record<string, string> = {
   assignada_a: "Assignada a",
   cost: "Cost",
   altres_costos: "Altres costos",
-  materials: "Materials",
+  materials: "Costos",
   observacions: "Observacions",
   cal_repassar: "Cal repassar",
   zona_id: "Lloc",

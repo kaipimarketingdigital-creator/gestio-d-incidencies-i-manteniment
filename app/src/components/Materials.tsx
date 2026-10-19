@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 
-// Llista de materials (nom, quantitat, unitat, cost per unitat) compartida entre incidències i preventiu.
+// Llista de costos (concepte, quantitat, unitat, preu per unitat) compartida entre incidències i preventiu.
+// Cada línia pot ser un material, mà d'obra o un proveïdor.
 
 export type Material = { id?: number; nom: string; quantitat: string; unitat: string; cost: string };
 
@@ -18,10 +19,10 @@ export function validarMaterials(ms: Material[]): Record<string, string> {
   const e: Record<string, string> = {};
   ms.forEach((m, k) => {
     if (buida(m)) return;
-    if (!m.nom.trim()) e[`mat-${k}-nom`] = "Falta el nom del material (o treu la fila amb ✕).";
+    if (!m.nom.trim()) e[`mat-${k}-nom`] = "Falta el concepte (o treu la fila amb ✕).";
     const q = num(m.quantitat), c = num(m.cost);
     if (q === null || Number.isNaN(q) || q <= 0) e[`mat-${k}-quantitat`] = "La quantitat ha de ser més gran que 0.";
-    if (c !== null && (Number.isNaN(c) || c < 0)) e[`mat-${k}-cost`] = "El cost ha de ser un import, per exemple 12,50.";
+    if (c !== null && (Number.isNaN(c) || c < 0)) e[`mat-${k}-cost`] = "El preu ha de ser un import, per exemple 12,50.";
   });
   return e;
 }
@@ -64,26 +65,26 @@ export default function EditorMaterials({ materials, onChange, onTreure, errors,
   };
   return (
     <>
-      {materials.length === 0 && <p className="buit">Cap material.</p>}
+      {materials.length === 0 && <p className="buit">Encara no hi ha cap cost.</p>}
       {materials.length > 0 && (
         <div className="material capcal-materials" aria-hidden="true">
-          <span>Material</span><span className="curt">Quantitat</span><span className="curt">Unitat</span><span className="curt">€ / unitat</span>
+          <span>Concepte</span><span className="curt">Quantitat</span><span className="curt">Unitat</span><span className="curt">€ / unitat</span>
           {!nomesLectura && <span className="treure-espai" />}
         </div>
       )}
       {materials.map((m, k) => (
         <div key={m.id ?? `n${k}`} className="material-fila">
           <div className="material">
-            <input aria-label="Nom del material" placeholder="Nom (p. ex. filtre G4)" value={m.nom} disabled={nomesLectura}
+            <input aria-label="Concepte" placeholder="Filtre G4, mà d'obra, lampista…" value={m.nom} disabled={nomesLectura}
               aria-invalid={!!err(`mat-${k}-nom`)} aria-describedby={`e-mat-${k}`} onChange={(e) => posar(k, "nom", e.target.value)} />
             <input aria-label="Quantitat" inputMode="decimal" className="curt" value={m.quantitat} disabled={nomesLectura}
               aria-invalid={!!err(`mat-${k}-quantitat`)} aria-describedby={`e-mat-${k}`} onChange={(e) => posar(k, "quantitat", e.target.value)} />
-            <input aria-label="Unitat" placeholder="u." className="curt" value={m.unitat} disabled={nomesLectura}
+            <input aria-label="Unitat" placeholder="u., h…" className="curt" value={m.unitat} disabled={nomesLectura}
               onChange={(e) => posar(k, "unitat", e.target.value)} />
-            <input aria-label="Cost per unitat (€)" placeholder="0,00" inputMode="decimal" className="curt" value={m.cost} disabled={nomesLectura}
+            <input aria-label="Preu per unitat (€)" placeholder="0,00" inputMode="decimal" className="curt" value={m.cost} disabled={nomesLectura}
               aria-invalid={!!err(`mat-${k}-cost`)} aria-describedby={`e-mat-${k}`} onChange={(e) => posar(k, "cost", e.target.value)} />
             {!nomesLectura && (
-              <button type="button" className="treure" aria-label={`Treure ${m.nom || "material"}`} onClick={() => onTreure(m)}>✕</button>
+              <button type="button" className="treure" aria-label={`Treure ${m.nom || "la línia"}`} onClick={() => onTreure(m)}>✕</button>
             )}
           </div>
           {(err(`mat-${k}-nom`) || err(`mat-${k}-quantitat`) || err(`mat-${k}-cost`)) && (
@@ -95,7 +96,7 @@ export default function EditorMaterials({ materials, onChange, onTreure, errors,
       ))}
       {!nomesLectura && (
         <button type="button" className="boto secundari petit" style={{ alignSelf: "flex-start" }}
-          onClick={() => onChange([...materials, { nom: "", quantitat: "1", unitat: "", cost: "" }])}>+ Afegir material</button>
+          onClick={() => onChange([...materials, { nom: "", quantitat: "1", unitat: "", cost: "" }])}>+ Afegir línia</button>
       )}
     </>
   );

@@ -167,10 +167,10 @@ export const apartats: Apartat[] = [
           <li><strong>Missatges del grup</strong> relacionats, amb la transcripció dels àudios.</li>
           <li><strong>Historial de canvis</strong>: qui va canviar què i quan (des de Telegram o des del panell).</li>
           <li><strong>Gestió</strong> (a la dreta): estat, prioritat, categoria, a qui està assignada, observacions i «Cal repassar-la». Prem <B>Desar canvis</B>; cada canvi queda a l'historial.</li>
-          <li><strong>Materials i costos</strong>: la llista de materials utilitzats (nom, quantitat, unitat i preu per unitat) i <strong>altres costos</strong> (mà d'obra, proveïdor extern…). El <strong>cost total</strong> es calcula sol. Prem <B>Desar materials i costos</B>.</li>
+          <li><strong>Costos</strong>: una línia per concepte (material, mà d'obra, proveïdor extern…) amb quantitat, unitat i preu per unitat; per exemple «Filtre G4 · 2 u. · 12,50 €» o «Mà d'obra · 2 h · 25 €». El <strong>total</strong> es calcula sol. Prem <B>Desar costos</B>.</li>
           <li><strong>Altres a aquest lloc</strong>: les altres incidències de la mateixa habitació o zona, i l'enllaç <B>Veure al mapa</B>.</li>
         </ul>
-        <Nota>Apuntar el <strong>cost i els materials</strong> en tancar una incidència fa que els informes i el control del pressupost preventiu siguin útils.</Nota>
+        <Nota>Apuntar els <strong>costos</strong> en tancar una incidència fa que els informes i el control del pressupost preventiu siguin útils.</Nota>
       </>
     ),
   },
@@ -200,7 +200,7 @@ export const apartats: Apartat[] = [
         <Passos>
           <li>Prem <B>Nova tasca</B> (o <B>Obrir</B> en una d'existent).</li>
           <li>Omple què cal fer, el lloc (o «Tot l'hotel»), la categoria, la <strong>freqüència</strong> (setmanal, mensual, trimestral… o un nombre de dies) i la <strong>propera vegada</strong>.</li>
-          <li>Opcional: <strong>responsable</strong> (se li assignarà la incidència), <strong>pressupost per vegada</strong>, instruccions i <strong>materials</strong> (nom, quantitat, unitat i cost; el total es calcula sol).</li>
+          <li>Opcional: <strong>responsable</strong> (se li assignarà la incidència), <strong>pressupost per vegada</strong>, instruccions i els <strong>costos</strong> de cada vegada (concepte, quantitat, unitat i preu; el total es calcula sol).</li>
           <li>Prem <B>Desar canvis</B>. Si hi ha algun camp per revisar, surt marcat en vermell amb l'explicació a sota.</li>
         </Passos>
         <h3>Accions</h3>

@@ -169,10 +169,10 @@ export const apartats: Apartat[] = [
           <li><strong>Mensajes del grupo</strong> relacionados, con la transcripción de los audios.</li>
           <li><strong>Historial de cambios</strong>: quién cambió qué y cuándo (desde Telegram o desde el panel).</li>
           <li><strong>Gestió</strong> (a la derecha): estado, prioridad, categoría, a quién está asignada, observaciones y «Cal repassar-la». Pulsa <B>Desar canvis</B> (guardar); cada cambio queda en el historial.</li>
-          <li><strong>Materials i costos</strong>: la lista de materiales usados (nombre, cantidad, unidad y precio por unidad) y <strong>otros costes</strong> (mano de obra, proveedor externo…). El <strong>coste total</strong> se calcula solo. Pulsa <B>Desar materials i costos</B>.</li>
+          <li><strong>Costos</strong> (costes): una línea por concepto (material, mano de obra, proveedor externo…) con cantidad, unidad y precio por unidad; por ejemplo «Filtre G4 · 2 u. · 12,50 €» o «Mano de obra · 2 h · 25 €». El <strong>total</strong> se calcula solo. Pulsa <B>Desar costos</B> (guardar costes).</li>
           <li><strong>Altres a…</strong>: las demás incidencias de la misma habitación o zona, y el enlace <B>Veure al mapa</B>.</li>
         </ul>
-        <Nota>Apuntar el <strong>coste y los materiales</strong> al cerrar una incidencia hace que los informes y el control del presupuesto preventivo sean útiles.</Nota>
+        <Nota>Apuntar los <strong>costes</strong> al cerrar una incidencia hace que los informes y el control del presupuesto preventivo sean útiles.</Nota>
       </>
     ),
   },
@@ -202,7 +202,7 @@ export const apartats: Apartat[] = [
         <Passos>
           <li>Pulsa <B>Nova tasca</B> (o <B>Obrir</B> en una existente).</li>
           <li>Rellena qué hay que hacer, el lugar (o «Tot l'hotel»), la categoría, la <strong>frecuencia</strong> (semanal, mensual, trimestral… o un número de días) y la <strong>próxima vez</strong>.</li>
-          <li>Opcional: <strong>responsable</strong> (se le asignará la incidencia), <strong>presupuesto por vez</strong>, instrucciones y <strong>materiales</strong> (nombre, cantidad, unidad y coste; el total se calcula solo).</li>
+          <li>Opcional: <strong>responsable</strong> (se le asignará la incidencia), <strong>presupuesto por vez</strong>, instrucciones y los <strong>costes</strong> de cada vez (concepto, cantidad, unidad y precio; el total se calcula solo).</li>
           <li>Pulsa <B>Desar canvis</B>. Si hay algún campo por revisar, aparece marcado en rojo con la explicación debajo.</li>
         </Passos>
         <h3>Acciones</h3>
