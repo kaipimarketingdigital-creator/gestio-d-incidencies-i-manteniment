@@ -23,6 +23,7 @@ export default function Estructura() {
           <NavLink to="/preventiu" className={classe}>Preventiu</NavLink>
           <NavLink to="/informes" className={classe}>Informes</NavLink>
           {esDireccio && <NavLink to="/configuracio" className={classe}>Configuració</NavLink>}
+          <NavLink to="/ajuda" className={({ isActive }) => `ajuda-menu${isActive ? " actiu" : ""}`}>Ajuda</NavLink>
         </nav>
         <div className="peu-menu">
           <img src={icones} alt="" aria-hidden="true" />

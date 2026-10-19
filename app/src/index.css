@@ -310,3 +310,53 @@ tr.apagada strong { font-weight: 600; }
   .targeta { break-inside: avoid; border: 1px solid #ddd; }
   [data-tip]::after { display: none !important; }
 }
+
+/* ---------- Ajuda */
+.menu nav a.ajuda-menu { margin-top: 12px; border-top: 1px solid rgba(255, 255, 255, .2); border-radius: 0 0 4px 4px; padding-top: 14px; }
+.menu nav a.ajuda-menu.actiu { border-radius: 4px; }
+.ajuda { display: flex; flex-direction: column; gap: 24px; }
+.idiomes { display: inline-flex; border: 1px solid var(--marca); border-radius: 4px; overflow: hidden; }
+.idiomes button { font: 600 14px var(--lletra); min-height: 44px; padding: 8px 14px; border: 0; background: #fff; color: var(--marca); cursor: pointer; }
+.idiomes button[aria-pressed="true"] { background: var(--marca); color: #fff; }
+.ajuda-cos { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.ajuda-index { flex: 1 1 220px; position: sticky; top: 16px; background: var(--surface); padding: 16px; }
+.ajuda-index h2 { margin-bottom: 8px; }
+.ajuda-index ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ajuda-index button { font: 14px var(--lletra); text-align: left; width: 100%; border: 0; background: none; padding: 6px 8px; border-radius: 4px; color: var(--ink); cursor: pointer; }
+.ajuda-index button:hover, .ajuda-index button.actiu { background: var(--crema); color: var(--marca); }
+.ajuda-text { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.apartat-ajuda { font-size: 15px; line-height: 1.6; scroll-margin-top: 16px; }
+.apartat-ajuda h2 { font-size: 15px; }
+.apartat-ajuda h3 { font-size: 15px; font-weight: 700; color: var(--ink); margin-top: 6px; }
+.apartat-ajuda p, .apartat-ajuda ul, .apartat-ajuda ol, .apartat-ajuda dl { margin: 0; }
+.apartat-ajuda ul { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.boto-text { display: inline-block; font-size: 13px; font-weight: 700; padding: 0 6px; border: 1px solid var(--line-fort); border-radius: 4px; background: #fff; white-space: nowrap; }
+.nota-ajuda { padding: 10px 14px; border-left: 4px solid var(--marca); background: #eaf1f8; font-size: 14px; }
+.nota-ajuda.consell { border-left-color: var(--salvia); background: #f1f5ee; }
+.nota-ajuda.compte { border-left-color: var(--terracota); background: #fbefe9; }
+.xat-ex { max-width: 460px; background: #fff; border: 1px solid var(--line); border-radius: 10px 10px 10px 2px; padding: 8px 12px; font-size: 14px; white-space: pre-line; }
+.xat-ex.bot { background: #eef4fa; border-color: #d3e1ee; }
+.xat-ex .qui { display: block; font-size: 12px; font-weight: 700; color: var(--terracota); }
+.xat-ex.bot .qui { color: var(--marca); }
+.passos-ajuda { counter-reset: pas; list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.passos-ajuda li { counter-increment: pas; position: relative; padding-left: 36px; }
+.passos-ajuda li::before { content: counter(pas); position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%; background: var(--marca); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+.esquema-ajuda { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.esquema-ajuda li { background: var(--crema); border-top: 4px solid var(--marca); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.esquema-ajuda li:nth-child(2) { border-top-color: var(--terracota); }
+.esquema-ajuda li:nth-child(3) { border-top-color: var(--salvia); }
+.esquema-ajuda li:nth-child(4) { border-top-color: var(--rosa); }
+.esquema-ajuda li:nth-child(5) { border-top-color: var(--sorra); }
+.esquema-ajuda strong { font-size: 14px; color: var(--marca); }
+.mostra-ajuda { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; }
+.mostra-ajuda.urgent { background: var(--urgent); }
+.mostra-ajuda.pendent { background: var(--sorra); }
+.mostra-ajuda.net { background: #fff; border: 1px solid var(--line-fort); }
+.faq-ajuda { display: flex; flex-direction: column; gap: 4px; }
+.faq-ajuda dt { font-weight: 700; margin-top: 10px; }
+.faq-ajuda dd { margin: 0; }
+@media print {
+  .ajuda-index { display: none !important; }
+  .apartat-ajuda { break-inside: auto; }
+  .entrada-banda, .franja { display: none !important; }
+}

@@ -61,6 +61,7 @@ export default function Entrar() {
           </form>
         )}
       </main>
+      <p style={{ textAlign: "center", margin: 0 }}><a href="#/ajuda">Com funciona? Manual d'ús</a> · <a href="#/ajuda?idioma=es">Manual en castellano</a></p>
       <footer className="entrada-peu"><img src={icones} alt="" aria-hidden="true" /></footer>
     </div>
   );
