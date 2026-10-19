@@ -206,3 +206,9 @@ td select { font: 14px var(--lletra); padding: 6px 8px; min-height: 36px; border
 .buit { margin: 0; font-size: 13px; color: var(--muted); }
 .panell-peu { position: sticky; bottom: 0; margin: auto -24px 0; padding: 14px 24px; background: var(--surface); border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; }
 fieldset:disabled input, fieldset:disabled select, fieldset:disabled textarea { background: #f6f3ef; color: var(--ink); }
+
+/* ---------- Errors al costat del camp */
+.error-camp { display: block; font-size: 13px; color: #a3291a; margin-top: 2px; }
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #c0392b !important; background: #fdf3f1; }
+.material-fila { display: flex; flex-direction: column; gap: 2px; }
+.material input::placeholder, .camp input::placeholder, .camp textarea::placeholder { color: #9aa3ad; font-style: italic; }

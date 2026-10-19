@@ -201,7 +201,6 @@ export default function Preventiu() {
           execucions={editant.tasca && !editant.copia ? execDe(editant.tasca.id) : []}
           onTancar={() => setEditant(null)}
           onDesat={async (text) => { setAvis({ tipus: "ok", text }); setEditant(null); await carregar(); }}
-          onError={(text) => setAvis({ tipus: "error", text })}
           onDuplicar={(t) => setEditant({ tasca: t, copia: true })}
           onPausar={(t) => accio(t, { activa: !t.activa }, t.activa ? "Tasca pausada: no generarà avisos." : "Tasca reactivada.")}
           onArxivar={(t) => accio(t, t.arxivada_el ? { arxivada_el: null } : { activa: false, arxivada_el: new Date().toISOString() },
@@ -218,7 +217,7 @@ export default function Preventiu() {
 type PropsEditor = {
   tasca: Tasca | null; copia: boolean; potGestionar: boolean;
   zones: Zona[]; persones: Persona[]; execucions: Execucio[];
-  onTancar: () => void; onDesat: (text: string) => void; onError: (text: string) => void;
+  onTancar: () => void; onDesat: (text: string) => void;
   onDuplicar: (t: Tasca) => void; onPausar: (t: Tasca) => void; onArxivar: (t: Tasca) => void; onEsborrar: (t: Tasca) => void;
 };
 
@@ -239,6 +238,16 @@ function Editor(p: PropsEditor) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [esborrats, setEsborrats] = useState<number[]>([]);
   const [desant, setDesant] = useState(false);
+  // Errors al costat de cada camp (clau = camp, o "mat-<fila>-<camp>"); "general" surt dins el panell.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const err = (k: string) => errors[k];
+  const treureError = (k: string) => {
+    if (!errors[k] && !errors.general) return;
+    const r = { ...errors };
+    delete r[k];
+    delete r.general;
+    setErrors(r);
+  };
 
   useEffect(() => {
     dialeg.current?.showModal();
@@ -269,17 +278,24 @@ function Editor(p: PropsEditor) {
     e.preventDefault();
     const dies = Number(f.periodicitat_dies);
     const pressupost = num(f.pressupost);
-    if (!Number.isInteger(dies) || dies < 1) return p.onError("La freqüència ha de ser un nombre de dies (1 o més).");
-    if (pressupost !== null && (Number.isNaN(pressupost) || pressupost < 0)) return p.onError("El pressupost ha de ser un import (per exemple 45,00).");
-    const senseNom = materials.find((m) => !m.nom.trim() && (m.cost_estimat.trim() || (m.quantitat.trim() && m.quantitat.trim() !== "1")));
-    if (senseNom) return p.onError("Hi ha un material sense nom. Escriu-lo o treu la fila amb ✕.");
-    const mats = materials.filter((m) => m.nom.trim());
-    for (const m of mats) {
+    const e2: Record<string, string> = {};
+    if (!Number.isInteger(dies) || dies < 1) e2.periodicitat = "Ha de ser un nombre de dies sencer (1 o més).";
+    if (pressupost !== null && (Number.isNaN(pressupost) || pressupost < 0)) e2.pressupost = "Escriu un import, per exemple 45,00.";
+    materials.forEach((m, k) => {
+      const buida = !m.nom.trim() && !m.cost_estimat.trim() && (!m.quantitat.trim() || m.quantitat.trim() === "1") && !m.unitat.trim();
+      if (buida) return; // fila buida: es descarta sense dir res
+      if (!m.nom.trim()) e2[`mat-${k}-nom`] = "Falta el nom del material (o treu la fila amb ✕).";
       const q = num(m.quantitat), c = num(m.cost_estimat);
-      if (q === null || Number.isNaN(q) || q <= 0 || (c !== null && (Number.isNaN(c) || c < 0))) {
-        return p.onError(`Revisa la quantitat o el cost de «${m.nom}».`);
-      }
+      if (q === null || Number.isNaN(q) || q <= 0) e2[`mat-${k}-quantitat`] = "La quantitat ha de ser més gran que 0.";
+      if (c !== null && (Number.isNaN(c) || c < 0)) e2[`mat-${k}-cost`] = "El cost ha de ser un import, per exemple 12,50.";
+    });
+    setErrors(e2);
+    if (Object.keys(e2).length) {
+      // Porta la persona al primer camp amb error.
+      setTimeout(() => (dialeg.current?.querySelector('[aria-invalid="true"]') as HTMLElement | null)?.focus(), 0);
+      return;
     }
+    const mats = materials.filter((m) => m.nom.trim());
     setDesant(true);
     const fila = {
       tasca: f.tasca.trim(), zona_id: f.zona_id || null, categoria: f.categoria, periodicitat_dies: dies,
@@ -291,7 +307,8 @@ function Editor(p: PropsEditor) {
       : await supabase.from("manteniment_preventiu").update(fila).eq("id", tasca!.id).select("id").single();
     if (r.error || !r.data) {
       setDesant(false);
-      return p.onError("No s'ha pogut desar la tasca. Torna-ho a provar.");
+      setErrors({ general: "No s'ha pogut desar la tasca. Revisa la connexió i torna-ho a provar." });
+      return;
     }
     const id = r.data.id as string;
     if (esborrats.length) await supabase.from("preventiu_materials").delete().in("id", esborrats);
@@ -345,7 +362,9 @@ function Editor(p: PropsEditor) {
             </label>
             {!PERIODES.some(([d]) => String(d) === f.periodicitat_dies) && (
               <label className="camp">Cada quants dies
-                <input type="number" min={1} required value={f.periodicitat_dies} onChange={(e) => posar("periodicitat_dies", e.target.value)} />
+                <input type="number" min={1} required value={f.periodicitat_dies} aria-invalid={!!err("periodicitat")} aria-describedby="e-periodicitat"
+                  onChange={(e) => { posar("periodicitat_dies", e.target.value); treureError("periodicitat"); }} />
+                {err("periodicitat") && <span id="e-periodicitat" className="error-camp">{err("periodicitat")}</span>}
               </label>
             )}
             <label className="camp">Propera vegada
@@ -360,7 +379,9 @@ function Editor(p: PropsEditor) {
               </select>
             </label>
             <label className="camp">Pressupost per vegada (€)
-              <input inputMode="decimal" value={f.pressupost} onChange={(e) => posar("pressupost", e.target.value)} placeholder="0,00" />
+              <input inputMode="decimal" value={f.pressupost} placeholder="0,00" aria-invalid={!!err("pressupost")} aria-describedby="e-pressupost"
+                onChange={(e) => { posar("pressupost", e.target.value); treureError("pressupost"); }} />
+              {err("pressupost") && <span id="e-pressupost" className="error-camp">{err("pressupost")}</span>}
             </label>
           </div>
           <label className="camp">Instruccions o observacions
@@ -374,16 +395,31 @@ function Editor(p: PropsEditor) {
             </div>
             {materials.length === 0 && <p className="buit">Cap material previst.</p>}
             {materials.map((m, k) => (
-              <div key={m.id ?? `n${k}`} className="material">
-                <input aria-label="Material" placeholder="Filtre G4" value={m.nom} onChange={(e) => setMaterials(materials.map((x, j) => j === k ? { ...x, nom: e.target.value } : x))} />
-                <input aria-label="Quantitat" inputMode="decimal" className="curt" value={m.quantitat} onChange={(e) => setMaterials(materials.map((x, j) => j === k ? { ...x, quantitat: e.target.value } : x))} />
-                <input aria-label="Unitat" placeholder="u." className="curt" value={m.unitat} onChange={(e) => setMaterials(materials.map((x, j) => j === k ? { ...x, unitat: e.target.value } : x))} />
-                <input aria-label="Cost per unitat (€)" placeholder="€/u." inputMode="decimal" className="curt" value={m.cost_estimat} onChange={(e) => setMaterials(materials.map((x, j) => j === k ? { ...x, cost_estimat: e.target.value } : x))} />
-                {!nomesLectura && (
-                  <button type="button" className="treure" aria-label={`Treure ${m.nom || "material"}`} onClick={() => {
-                    if (m.id) setEsborrats([...esborrats, m.id]);
-                    setMaterials(materials.filter((_, j) => j !== k));
-                  }}>✕</button>
+              <div key={m.id ?? `n${k}`} className="material-fila">
+                <div className="material">
+                  <input aria-label="Nom del material" placeholder="Nom (p. ex. filtre G4)" value={m.nom}
+                    aria-invalid={!!err(`mat-${k}-nom`)} aria-describedby={`e-mat-${k}`}
+                    onChange={(e) => { setMaterials(materials.map((x, j) => j === k ? { ...x, nom: e.target.value } : x)); treureError(`mat-${k}-nom`); }} />
+                  <input aria-label="Quantitat" inputMode="decimal" className="curt" value={m.quantitat}
+                    aria-invalid={!!err(`mat-${k}-quantitat`)} aria-describedby={`e-mat-${k}`}
+                    onChange={(e) => { setMaterials(materials.map((x, j) => j === k ? { ...x, quantitat: e.target.value } : x)); treureError(`mat-${k}-quantitat`); }} />
+                  <input aria-label="Unitat" placeholder="u." className="curt" value={m.unitat}
+                    onChange={(e) => setMaterials(materials.map((x, j) => j === k ? { ...x, unitat: e.target.value } : x))} />
+                  <input aria-label="Cost per unitat (€)" placeholder="€/u." inputMode="decimal" className="curt" value={m.cost_estimat}
+                    aria-invalid={!!err(`mat-${k}-cost`)} aria-describedby={`e-mat-${k}`}
+                    onChange={(e) => { setMaterials(materials.map((x, j) => j === k ? { ...x, cost_estimat: e.target.value } : x)); treureError(`mat-${k}-cost`); }} />
+                  {!nomesLectura && (
+                    <button type="button" className="treure" aria-label={`Treure ${m.nom || "material"}`} onClick={() => {
+                      if (m.id) setEsborrats([...esborrats, m.id]);
+                      setMaterials(materials.filter((_, j) => j !== k));
+                      setErrors({});
+                    }}>✕</button>
+                  )}
+                </div>
+                {(err(`mat-${k}-nom`) || err(`mat-${k}-quantitat`) || err(`mat-${k}-cost`)) && (
+                  <span id={`e-mat-${k}`} className="error-camp">
+                    {[err(`mat-${k}-nom`), err(`mat-${k}-quantitat`), err(`mat-${k}-cost`)].filter(Boolean).join(" ")}
+                  </span>
                 )}
               </div>
             ))}
@@ -422,6 +458,10 @@ function Editor(p: PropsEditor) {
           </div>
         )}
 
+        {errors.general && <p className="avis error" role="alert">{errors.general}</p>}
+        {Object.keys(errors).some((k) => k !== "general") && (
+          <p className="avis error" role="alert">Hi ha camps per revisar (marcats en vermell).</p>
+        )}
         {potGestionar && (
           <div className="panell-peu">
             <button type="submit" className="boto" disabled={desant}>{desant ? "Desant…" : nova ? "Crear tasca" : "Desar canvis"}</button>

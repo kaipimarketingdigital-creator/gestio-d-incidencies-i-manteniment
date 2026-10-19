@@ -38,6 +38,7 @@ export default function Fitxa() {
   const [altres, setAltres] = useState<Incidencia[]>([]);
   const [avis, setAvis] = useState<{ tipus: "ok" | "error"; text: string } | null>(null);
   const [desant, setDesant] = useState(false);
+  const [errorCost, setErrorCost] = useState("");
   const [noTrobada, setNoTrobada] = useState(false);
   const [visor, setVisor] = useState<number | null>(null);
 
@@ -104,7 +105,7 @@ export default function Fitxa() {
     if (abans.cost !== form.cost) {
       const n = form.cost.trim() === "" ? null : Number(form.cost.replace(",", "."));
       if (n !== null && (Number.isNaN(n) || n < 0)) {
-        setAvis({ tipus: "error", text: "El cost ha de ser un número (per exemple 12,50)." });
+        setErrorCost("Escriu un import, per exemple 12,50.");
         return;
       }
       canvis.cost = n;
@@ -265,7 +266,9 @@ export default function Fitxa() {
               </select>
             </label>
             <label className="camp">Cost (€)
-              <input inputMode="decimal" value={form.cost} onChange={(e) => posar("cost", e.target.value)} placeholder="0,00" />
+              <input inputMode="decimal" value={form.cost} placeholder="0,00" aria-invalid={!!errorCost} aria-describedby="e-cost"
+                onChange={(e) => { posar("cost", e.target.value); setErrorCost(""); }} />
+              {errorCost && <span id="e-cost" className="error-camp">{errorCost}</span>}
             </label>
             <label className="camp">Materials
               <textarea rows={2} value={form.materials} onChange={(e) => posar("materials", e.target.value)} placeholder="Peces o material utilitzat" />
