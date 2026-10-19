@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import Visor, { type Element } from "../components/Visor";
 import { useSessio } from "../lib/sessio";
 import {
   CATEGORIES, ESTATS, ESTATS_OBERTS, NOM_CAMP, NOM_CATEGORIA, NOM_ESTAT, NOM_PRIORITAT, PRIORITATS,
@@ -37,6 +38,7 @@ export default function Fitxa() {
   const [avis, setAvis] = useState<{ tipus: "ok" | "error"; text: string } | null>(null);
   const [desant, setDesant] = useState(false);
   const [noTrobada, setNoTrobada] = useState(false);
+  const [visor, setVisor] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     const { data, error } = await supabase.from("incidencies").select("*, zones(nom, planta)").eq("id", num).maybeSingle();
@@ -138,8 +140,10 @@ export default function Fitxa() {
   }
   if (!inc || !form) return <p style={{ color: "var(--muted)" }}>Carregant…</p>;
 
-  const fotos = missatges.flatMap((m) => m.adjunts.filter((a) => a.tipus === "foto" && a.url));
-  const altresAdjunts = missatges.flatMap((m) => m.adjunts.filter((a) => a.tipus !== "foto" && a.url));
+  const visuals: Element[] = missatges.flatMap((m) =>
+    m.adjunts.filter((a) => (a.tipus === "foto" || a.tipus === "video") && a.url).map((a) => ({ url: a.url!, tipus: a.tipus as "foto" | "video" })),
+  );
+  const altresAdjunts = missatges.flatMap((m) => m.adjunts.filter((a) => (a.tipus === "audio" || a.tipus === "altre") && a.url));
   const posar = <K extends keyof Formulari>(k: K, v: Formulari[K]) => setForm({ ...form, [k]: v });
 
   return (
@@ -170,23 +174,22 @@ export default function Fitxa() {
             {inc.preventiu_id && <p className="avis info">Generada pel manteniment preventiu.</p>}
           </section>
 
-          {(fotos.length > 0 || altresAdjunts.length > 0) && (
+          {(visuals.length > 0 || altresAdjunts.length > 0) && (
             <section className="targeta" aria-labelledby="t-fotos">
               <h2 id="t-fotos">Fotos i àudios</h2>
-              {fotos.length > 0 && (
+              {visuals.length > 0 && (
                 <div className="galeria">
-                  {fotos.map((f) => (
-                    <a key={f.id} href={f.url} target="_blank" rel="noreferrer">
-                      <img src={f.url} alt={`Foto de la incidència #${inc.id}`} loading="lazy" />
-                    </a>
+                  {visuals.map((v, k) => (
+                    <button key={v.url} type="button" className="miniatura" onClick={() => setVisor(k)} aria-label={`Obrir ${v.tipus === "foto" ? "foto" : "vídeo"} ${k + 1} de ${visuals.length}`}>
+                      {v.tipus === "foto" ? <img src={v.url} alt="" loading="lazy" /> : <video src={v.url} preload="metadata" muted />}
+                      {v.tipus === "video" && <span className="play" aria-hidden="true">▶</span>}
+                    </button>
                   ))}
                 </div>
               )}
               {altresAdjunts.map((a) =>
                 a.tipus === "audio" ? (
                   <audio key={a.id} controls preload="none" src={a.url} style={{ width: "100%" }} />
-                ) : a.tipus === "video" ? (
-                  <video key={a.id} controls preload="none" src={a.url} style={{ width: "100%", maxHeight: 360 }} />
                 ) : (
                   <a key={a.id} href={a.url} target="_blank" rel="noreferrer">Fitxer adjunt</a>
                 ),
@@ -289,6 +292,7 @@ export default function Fitxa() {
           )}
         </aside>
       </div>
+      {visor !== null && <Visor elements={visuals} inici={visor} onTancar={() => setVisor(null)} />}
     </>
   );
 }

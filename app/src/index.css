@@ -156,3 +156,26 @@ td select { font: 14px var(--lletra); padding: 6px 8px; min-height: 36px; border
 .casella input { width: 20px; height: 20px; accent-color: var(--marca); }
 .llista-altres { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
 .llista-altres span { display: block; font-size: 12px; color: var(--muted); }
+
+/* ---------- Visor de fotos */
+.miniatura { position: relative; padding: 0; border: 0; background: var(--crema); border-radius: 4px; overflow: hidden; cursor: zoom-in; aspect-ratio: 1; }
+.miniatura img, .miniatura video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.miniatura .play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 28px; background: rgba(0, 52, 93, .35); }
+.miniatura:focus-visible { outline: 3px solid var(--marca); outline-offset: 2px; }
+.visor { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: rgba(10, 22, 34, .94); color: #fff; display: flex; flex-direction: column; }
+.visor:not([open]) { display: none; }
+.visor::backdrop { background: rgba(10, 22, 34, .6); }
+.visor-barra { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; font-size: 14px; }
+.visor-boto { font: 600 14px var(--lletra); color: #fff; background: transparent; border: 1px solid rgba(255, 255, 255, .5); border-radius: 4px; padding: 8px 12px; min-height: 40px; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
+.visor-boto:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.visor-escena { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 56px; }
+.visor-escena img, .visor-escena video { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 2px; }
+.visor-fletxa { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; font-size: 40px; line-height: 1; color: #fff; background: rgba(255, 255, 255, .1); border: 0; border-radius: 4px; cursor: pointer; }
+.visor-fletxa:hover { background: rgba(255, 255, 255, .22); }
+.visor-fletxa.esquerra { left: 8px; }
+.visor-fletxa.dreta { right: 8px; }
+.visor-miniatures { display: flex; gap: 8px; justify-content: center; padding: 12px 16px 16px; overflow-x: auto; }
+.visor-miniatures button { flex: 0 0 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: 4px; overflow: hidden; background: #22313f; color: #fff; cursor: pointer; opacity: .6; }
+.visor-miniatures button.actiu { border-color: var(--terracota); opacity: 1; }
+.visor-miniatures img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 640px) { .visor-escena { padding: 0 8px; } .visor-fletxa { display: none; } }
