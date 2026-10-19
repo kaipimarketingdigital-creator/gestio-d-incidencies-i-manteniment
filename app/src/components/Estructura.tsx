@@ -22,7 +22,7 @@ export default function Estructura() {
           <NavLink to="/mapa" className={classe}>Mapa de l'hotel</NavLink>
           <NavLink to="/preventiu" className={classe}>Preventiu</NavLink>
           <a className="aviat" aria-disabled="true" title="Properament">Informes</a>
-          {esDireccio && <NavLink to="/configuracio/usuaris" className={classe}>Usuaris</NavLink>}
+          {esDireccio && <NavLink to="/configuracio" className={classe}>Configuració</NavLink>}
         </nav>
         <div className="peu-menu">
           <img src={icones} alt="" aria-hidden="true" />

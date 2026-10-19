@@ -94,7 +94,7 @@ export default function Mapa() {
     const n = d?.periode.length ?? 0;
     const desc = `${z.nom}: ${d?.obertes.length ? `${d.obertes.length} oberta${d.obertes.length > 1 ? "es" : ""}` : "sense incidències obertes"}${n ? `, ${n} en el període` : ""}`;
     return (
-      <button type="button" className={`${xip ? "xip-zona" : "casella"} ${nv}${sel === z.id ? " seleccionada" : ""}`}
+      <button type="button" className={`${xip ? "xip-zona" : "cela"} ${nv}${sel === z.id ? " seleccionada" : ""}`}
         onClick={() => posar("zona", sel === z.id ? null : z.id)} aria-pressed={sel === z.id} aria-label={desc} title={desc}>
         <span className="nom">{z.nom}</span>
         {n > 0 && <span className="compte">{n}×</span>}

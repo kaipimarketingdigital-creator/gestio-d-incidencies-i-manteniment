@@ -4,7 +4,7 @@ import Entrar from "./pages/Entrar";
 import SenseAcces from "./pages/SenseAcces";
 import Estructura from "./components/Estructura";
 import Avui from "./pages/Avui";
-import Usuaris from "./pages/Usuaris";
+import Configuracio from "./pages/Configuracio";
 import Incidencies from "./pages/Incidencies";
 import Fitxa from "./pages/Fitxa";
 import Preventiu from "./pages/Preventiu";
@@ -23,10 +23,8 @@ export default function App() {
         <Route path="incidencies/:id" element={<Fitxa />} />
         <Route path="preventiu" element={<Preventiu />} />
         <Route path="mapa" element={<Mapa />} />
-        <Route
-          path="configuracio/usuaris"
-          element={usuari.rol === "direccio" ? <Usuaris /> : <Navigate to="/" replace />}
-        />
+        <Route path="configuracio" element={usuari.rol === "direccio" ? <Navigate to="/configuracio/resum" replace /> : <Navigate to="/" replace />} />
+        <Route path="configuracio/:pestanya" element={usuari.rol === "direccio" ? <Configuracio /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

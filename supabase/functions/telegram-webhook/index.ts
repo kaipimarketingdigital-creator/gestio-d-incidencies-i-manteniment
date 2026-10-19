@@ -9,6 +9,7 @@
 //   GET  ?accio=models         llista els models de Gemini disponibles (diagnòstic).
 //   GET  ?accio=resum          resum del matí (cron a i 30; &forcar=1 per provar).
 //   GET  ?accio=avaluar        examen amb casos reals (no publica res).
+//   POST {accio:"prova_correu"} des del panell (sessió de Direcció): envia ara el resum per correu.
 //   Totes les rutes GET amb ?accio= demanen &clau= (taula config, la porta el cron).
 //
 // Secrets: TELEGRAM_BOT_TOKEN, GEMINI_API_KEY; opcionals TELEGRAM_GROUP_ID, GEMINI_MODEL.
@@ -16,6 +17,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { BOT_TOKEN, botons, descarregar, secretWebhook, tg } from "./telegram.ts";
 import { type Accio, ESTATS, interpretar, llistarModels, MODEL, type Part } from "./gemini.ts";
+import { type Ajustos, construirResum, enviarCorreu, type FilaResum, type TascaResum } from "./correu.ts";
 
 const GROUP_ID = Deno.env.get("TELEGRAM_GROUP_ID") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -464,9 +466,17 @@ function b64(bytes: Uint8Array): string {
 const HORA_RESUM = Number(Deno.env.get("RESUM_HORA") ?? "8");
 const ORDRE_PRIORITAT: Record<string, number> = { urgent: 0, alta: 1, mitjana: 2, baixa: 3 };
 
+async function llegirAjustos(): Promise<Ajustos | null> {
+  const { data } = await db.from("ajustos").select("*").eq("id", 1).maybeSingle();
+  return data as Ajustos | null;
+}
+const horaMadrid = () => Number(new Date().toLocaleString("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }));
+
 async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
-  const hora = Number(new Date().toLocaleString("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }));
-  if (!forcar && hora !== HORA_RESUM) return { enviat: false, motiu: `no és l'hora (${hora} h)` };
+  const a = await llegirAjustos();
+  const hora = horaMadrid();
+  const horaResum = a?.resum_telegram_hora ?? HORA_RESUM;
+  if (!forcar && hora !== horaResum) return { enviat: false, motiu: `no és l'hora (${hora} h)` };
 
   let xat = GROUP_ID ? Number(GROUP_ID) : null;
   if (!xat) {
@@ -482,6 +492,7 @@ async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
   const llistaZones = await zones();
   const zonaPerId = new Map(llistaZones.map((z) => [z.id, z]));
   const preventius = await generarPreventius(xat, zonaPerId);
+  if (a && !a.resum_telegram_actiu && !forcar) return { enviat: false, motiu: "resum de Telegram desactivat", preventius };
   const { data: obertes } = await db.from("incidencies").select("*")
     .not("estat", "in", "(resolta,anullada)").order("creada_el");
   const llista = (obertes ?? []).sort((a: Inc, b: Inc) =>
@@ -508,6 +519,81 @@ async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
   }
   await enviar(xat, text, null, null, "resum");
   return { enviat: true, pendents: llista.length, preventius };
+}
+
+// ---------------------------------------------------------------- resum per correu
+
+async function resumCorreu(forcar: boolean, destinataris?: string[]): Promise<Record<string, unknown>> {
+  const a = await llegirAjustos();
+  if (!a) return { enviat: false, motiu: "falta la taula ajustos" };
+  const avuiD = avui();
+  const diaSetmana = ((new Date(`${avuiD}T12:00:00Z`).getUTCDay() + 6) % 7) + 1; // 1 = dilluns
+  if (!forcar) {
+    if (!a.resum_correu_actiu) return { enviat: false, motiu: "desactivat" };
+    if (horaMadrid() !== a.resum_correu_hora) return { enviat: false, motiu: "no és l'hora" };
+    if (!a.resum_correu_dies.includes(diaSetmana)) return { enviat: false, motiu: "avui no toca" };
+    if (a.resum_correu_darrer === avuiD) return { enviat: false, motiu: "ja enviat avui" };
+  }
+  const a_qui = destinataris ?? a.resum_correu_destinataris;
+
+  const llistaZones = await zones();
+  const zonaPerId = new Map(llistaZones.map((z) => [z.id, z]));
+  const lloc = (i: Inc) => nomZona(zonaPerId.get(i.zona_id), i.zona_text);
+  const dies = (d: string) => {
+    const n = Math.floor((Date.now() - Date.parse(d)) / 864e5);
+    return n === 0 ? "avui" : n === 1 ? "des d'ahir" : `fa ${n} dies`;
+  };
+  const { data: obertes } = await db.from("incidencies").select("*").not("estat", "in", "(resolta,anullada)").order("creada_el");
+  const pendents: FilaResum[] = (obertes ?? [])
+    .sort((x: Inc, y: Inc) => (ORDRE_PRIORITAT[x.prioritat] ?? 9) - (ORDRE_PRIORITAT[y.prioritat] ?? 9))
+    .map((i: Inc) => ({ id: i.id, lloc: lloc(i), descripcio: i.descripcio, prioritat: i.prioritat, estat: i.estat, dies: dies(i.creada_el) }));
+
+  const ahir = new Date(Date.parse(`${avuiD}T12:00:00Z`) - 864e5).toISOString().slice(0, 10);
+  const { data: tancades } = await db.from("incidencies").select("*").eq("estat", "resolta")
+    .gte("resolta_el", new Date(Date.now() - 3 * 864e5).toISOString());
+  const resoltesAhir: FilaResum[] = (tancades ?? [])
+    .filter((i: Inc) => new Date(i.resolta_el).toLocaleDateString("sv-SE", { timeZone: "Europe/Madrid" }) === ahir)
+    .map((i: Inc) => ({ id: i.id, lloc: lloc(i), descripcio: i.descripcio, prioritat: i.prioritat, estat: i.estat, dies: "", cost: i.cost }));
+
+  const limit = new Date(Date.parse(`${avuiD}T12:00:00Z`) + 7 * 864e5).toISOString().slice(0, 10);
+  const { data: tasques } = await db.from("manteniment_preventiu").select("tasca, zona_id, propera_revisio, responsable_id")
+    .eq("activa", true).is("arxivada_el", null).lte("propera_revisio", limit).order("propera_revisio");
+  const ids = [...new Set((tasques ?? []).map((t: Inc) => t.responsable_id).filter(Boolean))];
+  const { data: resp } = ids.length ? await db.from("persones").select("id, nom").in("id", ids) : { data: [] };
+  const nomResp = new Map((resp ?? []).map((r: Inc) => [r.id, r.nom]));
+  const preventiu: TascaResum[] = (tasques ?? []).map((t: Inc) => ({
+    tasca: t.tasca, lloc: t.zona_id ? nomZona(zonaPerId.get(t.zona_id)) : "Tot l'hotel",
+    quan: t.propera_revisio <= avuiD ? "toca ja" : new Date(`${t.propera_revisio}T12:00:00Z`).toLocaleDateString("ca-ES", { weekday: "long", day: "numeric" }),
+    responsable: nomResp.get(t.responsable_id) ?? null,
+  }));
+
+  const data = new Date().toLocaleDateString("ca-ES", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" });
+  const { assumpte, html, text } = construirResum({ data, pendents, resoltesAhir, preventiu, a });
+  await enviarCorreu(a, a_qui, assumpte, html, text);
+  if (!destinataris) await db.from("ajustos").update({ resum_correu_darrer: avuiD }).eq("id", 1);
+  return { enviat: true, destinataris: a_qui.length, pendents: pendents.length };
+}
+
+// Prova des del panell: només Direcció, amb la seva sessió.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+async function provaCorreu(req: Request, cos: { a?: string[] }): Promise<Response> {
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const { data: u } = await db.auth.getUser(token);
+  if (!u?.user) return Response.json({ error: "sense sessió" }, { status: 401, headers: CORS });
+  const { data: fila } = await db.from("usuaris_panell").select("rol, estat, email").eq("auth_id", u.user.id).maybeSingle();
+  if (fila?.rol !== "direccio" || fila?.estat !== "actiu") return Response.json({ error: "només Direcció" }, { status: 403, headers: CORS });
+  const a_qui = (cos.a ?? []).map((x) => String(x).trim().toLowerCase()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)).slice(0, 10);
+  try {
+    const r = await resumCorreu(true, a_qui.length ? a_qui : [fila.email]);
+    return Response.json(r, { headers: CORS });
+  } catch (e) {
+    console.error("prova_correu", e);
+    return Response.json({ error: String((e as Error).message ?? e).slice(0, 300) }, { status: 500, headers: CORS });
+  }
 }
 
 // Tasques preventives que toquen avui: cada una es converteix en una incidència i s'avisa al grup.
@@ -609,7 +695,17 @@ Deno.serve(async (req) => {
   if (accio === "models") return Response.json({ model_actual: MODEL, disponibles: await llistarModels() });
   const tasques: Record<string, () => Promise<Record<string, unknown>>> = {
     processar,
-    resum: () => resumDiari(url.searchParams.get("forcar") === "1"),
+    resum: async () => {
+      const telegram = await resumDiari(url.searchParams.get("forcar") === "1");
+      let correu: Record<string, unknown>;
+      try {
+        correu = await resumCorreu(false);
+      } catch (e) {
+        console.error("correu", e);
+        correu = { enviat: false, error: String(e).slice(0, 300) };
+      }
+      return { telegram, correu };
+    },
     avaluar,
   };
   if (accio && tasques[accio]) {
@@ -620,10 +716,14 @@ Deno.serve(async (req) => {
       return new Response("error", { status: 500 });
     }
   }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return new Response("ok");
 
   if (req.headers.get("X-Telegram-Bot-Api-Secret-Token") !== (await secretWebhook())) {
-    return new Response("forbidden", { status: 403 });
+    // Crides del panell (amb la sessió de l'usuari), no de Telegram.
+    const cos = await req.json().catch(() => ({}));
+    if (cos?.accio === "prova_correu") return await provaCorreu(req, cos);
+    return new Response("forbidden", { status: 403, headers: CORS });
   }
   const update = await req.json();
   try {

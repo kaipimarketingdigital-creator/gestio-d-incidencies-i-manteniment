@@ -17,7 +17,7 @@ function data(d: string | null) {
   return d ? new Date(d).toLocaleString("ca-ES", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Mai";
 }
 
-export default function Usuaris() {
+export default function Usuaris({ incrustat = false }: { incrustat?: boolean }) {
   const { usuari: jo } = useSessio();
   const [llista, setLlista] = useState<Usuari[]>([]);
   const [avis, setAvis] = useState<{ tipus: "ok" | "error"; text: string } | null>(null);
@@ -70,12 +70,14 @@ export default function Usuaris() {
 
   return (
     <>
-      <div className="capcalera">
-        <div>
-          <h1>Usuaris</h1>
-          <span className="sub">Qui pot entrar al panell i què hi pot fer</span>
+      {!incrustat && (
+        <div className="capcalera">
+          <div>
+            <h1>Usuaris</h1>
+            <span className="sub">Qui pot entrar al panell i què hi pot fer</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {avis && <p className={`avis ${avis.tipus}`} role={avis.tipus === "error" ? "alert" : "status"}>{avis.text}</p>}
 
