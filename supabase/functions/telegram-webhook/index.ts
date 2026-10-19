@@ -521,7 +521,8 @@ async function generarPreventius(xat: number, zonaPerId: Map<string, Zona>): Pro
     if (oberta) continue;
     const { data: inc, error } = await db.from("incidencies").insert({
       zona_id: t.zona_id, categoria: t.categoria ?? "tasca", prioritat: "mitjana", descripcio: t.tasca,
-      observacions: `Manteniment preventiu (cada ${t.periodicitat_dies} dies)`, preventiu_id: t.id, tg_xat_id: xat,
+      assignada_a: t.responsable_id ?? null,
+      observacions: `Manteniment preventiu (cada ${t.periodicitat_dies} dies)${t.observacions ? `\n${t.observacions}` : ""}`, preventiu_id: t.id, tg_xat_id: xat,
     }).select("*").single();
     if (error) { console.error("preventiu", error); continue; }
     await historial(inc.id, null, "estat", null, "oberta");

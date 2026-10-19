@@ -7,6 +7,7 @@ import Avui from "./pages/Avui";
 import Usuaris from "./pages/Usuaris";
 import Incidencies from "./pages/Incidencies";
 import Fitxa from "./pages/Fitxa";
+import Preventiu from "./pages/Preventiu";
 
 export default function App() {
   const { carregant, sessio, usuari } = useSessio();
@@ -19,6 +20,7 @@ export default function App() {
         <Route index element={<Avui />} />
         <Route path="incidencies" element={<Incidencies />} />
         <Route path="incidencies/:id" element={<Fitxa />} />
+        <Route path="preventiu" element={<Preventiu />} />
         <Route
           path="configuracio/usuaris"
           element={usuari.rol === "direccio" ? <Usuaris /> : <Navigate to="/" replace />}
