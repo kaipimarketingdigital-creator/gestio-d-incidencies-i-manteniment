@@ -285,7 +285,10 @@ export default function Fitxa() {
 
           {inc.zona_id && (
             <section className="targeta" aria-labelledby="t-altres">
-              <h2 id="t-altres">Altres a {lloc(inc)}</h2>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "baseline" }}>
+                <h2 id="t-altres">Altres a {lloc(inc)}</h2>
+                <Link to={`/mapa?zona=${inc.zona_id}`} style={{ fontSize: 14 }}>Veure al mapa</Link>
+              </div>
               {altres.length === 0 ? (
                 <p style={{ margin: 0, color: "var(--muted)", fontSize: 14 }}>És la primera incidència d'aquest lloc.</p>
               ) : (

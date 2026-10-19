@@ -212,3 +212,38 @@ fieldset:disabled input, fieldset:disabled select, fieldset:disabled textarea { 
 input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #c0392b !important; background: #fdf3f1; }
 .material-fila { display: flex; flex-direction: column; gap: 2px; }
 .material input::placeholder, .camp input::placeholder, .camp textarea::placeholder { color: #9aa3ad; font-style: italic; }
+
+/* ---------- Mapa de l'hotel */
+.llegenda { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; font-size: 14px; color: var(--muted); }
+.llegenda .mostra { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+.mostra.urgent { background: var(--urgent); }
+.mostra.pendent { background: var(--sorra); }
+.mostra.net { background: #fff; border: 1px solid var(--line-fort); }
+.mapa { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.mapa-plantes { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.graella { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.graella + .graella { margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.casella, .xip-zona { font: inherit; cursor: pointer; border: 1px solid var(--line-fort); background: #fff; color: var(--ink); border-radius: 4px; }
+.casella { min-height: 56px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.casella .nom { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+.casella .compte, .xip-zona .compte { font-size: 11px; font-weight: 600; opacity: .85; }
+.casella.urgent, .xip-zona.urgent { background: var(--urgent); border-color: var(--urgent); color: #fff; }
+.casella.pendent, .xip-zona.pendent { background: var(--sorra); border-color: #cfae84; }
+.casella:hover, .xip-zona:hover { box-shadow: 0 0 0 2px rgba(0, 75, 133, .25); }
+.casella.seleccionada, .xip-zona.seleccionada { outline: 3px solid var(--terracota); outline-offset: 2px; }
+.casella:focus-visible, .xip-zona:focus-visible { outline: 3px solid var(--marca); outline-offset: 2px; }
+.xips { display: flex; flex-wrap: wrap; gap: 6px; }
+.xip-zona { padding: 8px 12px; min-height: 40px; display: inline-flex; gap: 6px; align-items: baseline; font-size: 14px; }
+.detall-zona { flex: 1 1 320px; position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; gap: 12px; }
+.detall-zona .nom-zona { font-size: 26px; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.resum-zona { margin: 0; font-size: 14px; color: var(--muted); }
+.galeria.petita { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+.subtitol { font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--marca); margin-top: 4px; }
+.llista-zona { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.llista-zona li { border-left: 3px solid var(--line-fort); padding-left: 10px; }
+.llista-zona li span { display: block; font-size: 12px; color: var(--muted); }
+.llista-zona .vora-urgent { border-left-color: var(--urgent); }
+.llista-zona .vora-alta { border-left-color: var(--terracota); }
+.llista-zona .vora-mitjana, .llista-zona .vora-baixa { border-left-color: var(--sorra); }
+.llista-zona .vora-tancada { border-left-color: var(--salvia); }
+@media (max-width: 900px) { .detall-zona { position: static; max-height: none; } }

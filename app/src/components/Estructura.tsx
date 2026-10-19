@@ -19,7 +19,7 @@ export default function Estructura() {
         <nav aria-label="Menú principal">
           <NavLink to="/" end className={classe}>Avui</NavLink>
           <NavLink to="/incidencies" className={classe}>Incidències</NavLink>
-          <a className="aviat" aria-disabled="true" title="Properament">Mapa de l'hotel</a>
+          <NavLink to="/mapa" className={classe}>Mapa de l'hotel</NavLink>
           <NavLink to="/preventiu" className={classe}>Preventiu</NavLink>
           <a className="aviat" aria-disabled="true" title="Properament">Informes</a>
           {esDireccio && <NavLink to="/configuracio/usuaris" className={classe}>Usuaris</NavLink>}
