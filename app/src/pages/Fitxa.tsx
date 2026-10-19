@@ -59,7 +59,7 @@ export default function Fitxa() {
         : Promise.resolve({ data: [] }),
     ]);
     setPersones((p.data ?? []) as Persona[]);
-    setHistorial((h.data ?? []) as CanviHistorial[]);
+    setHistorial((h.data ?? []) as unknown as CanviHistorial[]);
     setAltres((a.data ?? []) as Incidencia[]);
 
     // Les fotos i àudios són privats: es demanen enllaços temporals (1 hora).
