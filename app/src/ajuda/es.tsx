@@ -130,6 +130,7 @@ export const apartats: Apartat[] = [
           <li>El enlace funciona una sola vez y caduca en una hora. La sesión queda abierta en ese dispositivo hasta que pulses <B>Sortir</B> (salir).</li>
         </Passos>
         <p>Solo pueden entrar las personas que Dirección ha invitado. Si alguien entra con un correo no invitado, queda <em>Pendent d'aprovació</em> (pendiente de aprobación) y no ve ningún dato hasta que Dirección lo aprueba.</p>
+        <Nota tipus="consell">En cada pantalla, el botón <B>? Ajuda</B> de abajo a la derecha abre la ayuda de esa pantalla sin salir de ella.</Nota>
         <h3>Qué puede hacer cada rol</h3>
         <div className="taula-caixa">
           <table>

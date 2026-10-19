@@ -3,6 +3,7 @@ import { useSessio } from "../lib/sessio";
 import { NOM_ROL } from "../lib/supabase";
 import logo from "../assets/logo-rull-blanc.png";
 import icones from "../assets/icones-delta.png";
+import AjudaContextual from "./AjudaContextual";
 
 // Menú lateral i espai de contingut, com a les maquetes.
 export default function Estructura() {
@@ -36,6 +37,7 @@ export default function Estructura() {
       </aside>
       <main className="contingut">
         <Outlet />
+        <AjudaContextual />
       </main>
     </div>
   );
