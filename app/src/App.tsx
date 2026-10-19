@@ -12,6 +12,7 @@ import Mapa from "./pages/Mapa";
 import Informes from "./pages/Informes";
 import Ajuda from "./pages/Ajuda";
 import Perfil from "./pages/Perfil";
+import Importar from "./pages/Importar";
 import logo from "./assets/logo-rull-blanc.png";
 
 export default function App() {
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="mapa" element={<Mapa />} />
         <Route path="informes" element={usuari.rol === "manteniment" ? <Navigate to="/" replace /> : <Informes />} />
         <Route path="perfil" element={<Perfil />} />
+        <Route path="importar" element={usuari.rol === "direccio" ? <Importar /> : <Navigate to="/" replace />} />
         <Route path="ajuda" element={<Ajuda />} />
         <Route path="configuracio" element={usuari.rol === "direccio" ? <Navigate to="/configuracio/resum" replace /> : <Navigate to="/" replace />} />
         <Route path="configuracio/:pestanya" element={usuari.rol === "direccio" ? <Configuracio /> : <Navigate to="/" replace />} />
