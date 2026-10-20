@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useSessio } from "../lib/sessio";
+import { usePaginacio } from "../components/Paginacio";
 
 type Fila = {
   id: number;
@@ -34,13 +35,15 @@ export default function Avui() {
       .select("id, descripcio, prioritat, estat, creada_el, zona_text, zones(nom)")
       .in("estat", OBERTES)
       .order("creada_el", { ascending: false })
-      .limit(200)
+      .limit(2000)
       .then(({ data, error }) => {
         if (error) setError("No s'han pogut carregar les incidències.");
         else setFiles(((data ?? []) as unknown as Fila[]).sort((a, b) => ORDRE[a.prioritat] - ORDRE[b.prioritat]));
       });
   }, []);
 
+  const llista = useMemo(() => files ?? [], [files]);
+  const { visibles, controls } = usePaginacio(llista, "avui", 10);
   const compte = (p: Fila["prioritat"]) => files?.filter((f) => f.prioritat === p).length ?? 0;
   const avui = new Date().toLocaleDateString("ca-ES", { weekday: "long", day: "numeric", month: "long" });
 
@@ -68,7 +71,7 @@ export default function Avui() {
             <table>
               <thead><tr><th>#</th><th>Lloc</th><th>Descripció</th><th>Prioritat</th><th>Estat</th><th>Data</th></tr></thead>
               <tbody>
-                {files.map((f) => (
+                {visibles.map((f) => (
                   <tr key={f.id}>
                     <td className="xifra"><Link to={`/incidencies/${f.id}`}>{f.id}</Link></td>
                     <td>{f.zones?.nom ?? f.zona_text ?? "—"}</td>
@@ -82,6 +85,7 @@ export default function Avui() {
             </table>
           </div>
         )}
+        {controls}
       </section>
     </>
   );

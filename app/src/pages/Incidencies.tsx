@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { usePaginacio } from "../components/Paginacio";
 import {
   CATEGORIES, ESTATS, ESTATS_OBERTS, NOM_CATEGORIA, NOM_ESTAT, NOM_PRIORITAT, ORDRE_PRIORITAT, PRIORITATS,
   dataCurta, lloc, type Incidencia,
@@ -60,6 +61,7 @@ export default function Incidencies() {
     return r;
   }, [totes, q, estat, prio, cat, ordre]);
 
+  const { visibles, controls } = usePaginacio(files, "incidencies", 25);
   const hiHaFiltres = q || estat !== "obertes" || prio || cat;
 
   return (
@@ -124,7 +126,7 @@ export default function Incidencies() {
               <tr><th>#</th><th>Lloc</th><th>Descripció</th><th>Prioritat</th><th>Estat</th><th>Creada</th></tr>
             </thead>
             <tbody>
-              {files.map((i) => (
+              {visibles.map((i) => (
                 <tr key={i.id}>
                   <td className="xifra"><Link to={`/incidencies/${i.id}`}>{i.id}</Link></td>
                   <td style={{ whiteSpace: "nowrap" }}>{lloc(i)}</td>
@@ -142,6 +144,7 @@ export default function Incidencies() {
           </table>
         </div>
       )}
+      {files.length > 0 && controls}
     </>
   );
 }

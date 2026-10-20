@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { LlistaPaginada } from "../components/Paginacio";
 import { useSessio } from "../lib/sessio";
 import EditorMaterials, { MATERIALS_PREVENTIU, carregarMaterials, desarMaterials, totalMaterials, validarMaterials, type Material } from "../components/Materials";
 import {
@@ -145,13 +146,14 @@ export default function Preventiu() {
       {ordreGrups.map((g) => grups[g].length > 0 && (
         <section key={g} className="targeta" aria-labelledby={`g-${g}`}>
           <h2 id={`g-${g}`}>{NOM_GRUP[g]} <span className="comptador">{grups[g].length}</span></h2>
+          <LlistaPaginada items={grups[g]} clau="preventiu" defecte={10}>{(visibles) => (
           <div className="taula-caixa">
             <table>
               <thead>
                 <tr><th>Tasca</th><th>Lloc</th><th>Freqüència</th><th>Propera</th><th>Responsable</th><th>Pressupost</th><th></th></tr>
               </thead>
               <tbody>
-                {grups[g].map((t) => {
+                {visibles.map((t) => {
                   const d = diesFins(t.propera_revisio);
                   const oberta = execDe(t.id).find((x) => ESTATS_OBERTS.includes(x.estat));
                   return (
@@ -182,6 +184,7 @@ export default function Preventiu() {
               </tbody>
             </table>
           </div>
+          )}</LlistaPaginada>
         </section>
       ))}
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { LlistaPaginada } from "../components/Paginacio";
 import Visor, { type Element } from "../components/Visor";
 import {
   ESTATS_OBERTS, NOM_CATEGORIA, NOM_ESTAT, NOM_PRIORITAT, ORDRE_PRIORITAT, dataCurta,
@@ -185,7 +186,7 @@ function DetallZona({ zona, incs, desde, nomPeriode, onTancar }: {
   }, []);
   const obertes = incs.filter((i) => ESTATS_OBERTS.includes(i.estat))
     .sort((a, b) => ORDRE_PRIORITAT[a.prioritat] - ORDRE_PRIORITAT[b.prioritat]);
-  const tancades = incs.filter((i) => !ESTATS_OBERTS.includes(i.estat));
+  const tancades = useMemo(() => incs.filter((i) => !ESTATS_OBERTS.includes(i.estat)), [incs]);
   const enPeriode = incs.filter((i) => i.estat !== "anullada" && (!desde || i.creada_el >= desde));
   const cost = enPeriode.reduce((s, i) => s + (i.cost ?? 0), 0);
   const perCategoria = Object.entries(enPeriode.reduce<Record<string, number>>((m, i) => {
@@ -271,14 +272,16 @@ function DetallZona({ zona, incs, desde, nomPeriode, onTancar }: {
       {tancades.length > 0 && (
         <>
           <h3 className="subtitol">Historial</h3>
+          <LlistaPaginada items={tancades} clau="mapa-historial" defecte={10}>{(visibles) => (
           <ul className="llista-zona">
-            {tancades.map((i) => (
+            {visibles.map((i) => (
               <li key={i.id} className="vora-tancada">
                 <Link to={`/incidencies/${i.id}`}>#{i.id} {i.descripcio}</Link>
                 <span>{dataCurta(i.creada_el)} · {NOM_ESTAT[i.estat]}{i.cost ? ` · ${i.cost.toLocaleString("ca-ES", { style: "currency", currency: "EUR" })}` : ""}</span>
               </li>
             ))}
           </ul>
+          )}</LlistaPaginada>
         </>
       )}
 
