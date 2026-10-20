@@ -182,6 +182,8 @@ async function importar(form: FormData) {
   try {
     for (const m of inc.missatges) {
       const { data: msg, error: em } = await db.from("missatges").insert({
+        // Xat 0 = WhatsApp (no és cap xat de Telegram); id únic per incidència i línia del xat exportat
+        tg_xat_id: 0, tg_missatge_id: Number(inc.clau.replace(/\D/g, "")) * 10000 + m.linia,
         incidencia_id: id, autor_id: await persona(m.autor), text: m.text || null, rebut_el: m.data, processat: true,
         cru: { origen: "whatsapp", incidencia: inc.clau, linia: m.linia, fitxers: m.fitxers },
       }).select("id").single();
@@ -194,7 +196,8 @@ async function importar(form: FormData) {
         const ruta = `whatsapp/${nom}`;
         const { error: es } = await db.storage.from(BUCKET).upload(ruta, bytes, { contentType: mime, upsert: true });
         if (es) throw new Error(`fitxer ${nom}: ${es.message}`);
-        await db.from("adjunts").insert({ missatge_id: msg.id, tipus, ruta_storage: ruta, mida_bytes: bytes.length });
+        const { error: ea } = await db.from("adjunts").insert({ missatge_id: msg.id, tipus, tg_file_id: `whatsapp:${nom}`, ruta_storage: ruta, mida_bytes: bytes.length });
+        if (ea) throw new Error(`adjunt ${nom}: ${ea.message}`);
         pujats++;
         if (tipus === "audio") {
           const t = await transcriure(bytes);
@@ -211,7 +214,8 @@ async function importar(form: FormData) {
         valor_anterior: "oberta", valor_nou: inc.estat, canviat_el: inc.resolta_el ?? darrer,
       });
     }
-    await db.from("historial").insert(hist);
+    const { error: eh } = await db.from("historial").insert(hist);
+    if (eh) throw new Error(`historial: ${eh.message}`);
   } catch (e) {
     // Si falla a mitges, es desfà perquè es pugui tornar a provar
     await db.from("missatges").delete().eq("incidencia_id", id);
