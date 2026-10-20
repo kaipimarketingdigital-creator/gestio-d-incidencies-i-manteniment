@@ -51,10 +51,11 @@ type Inc = {
 async function usuariDireccio(req: Request): Promise<boolean> {
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!token) return false;
-  const { data: u } = await db.auth.getUser(token);
-  if (!u?.user) return false;
+  const { data: u, error } = await db.auth.getUser(token);
+  if (!u?.user) { console.error("sessió no vàlida", error?.message); return false; }
   const { data: f } = await db.from("usuaris_panell").select("rol, estat").eq("auth_id", u.user.id).maybeSingle();
-  return f?.rol === "direccio" && f?.estat === "actiu";
+  if (f?.rol !== "direccio" || f?.estat !== "actiu") { console.error("no és Direcció", u.user.email, f); return false; }
+  return true;
 }
 
 async function compte(taula: string, filtre?: (q: any) => any): Promise<number> {

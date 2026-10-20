@@ -12,8 +12,14 @@ type Fila = { clau: string; estat: "pendent" | "fent" | "feta" | "ja" | "error";
 
 const FUNCIO = "importar-whatsapp";
 
-async function cridar<T>(body: FormData | Record<string, unknown>): Promise<T> {
+async function cridar<T>(body: FormData | Record<string, unknown>, reintent = true): Promise<T> {
   const { data, error } = await supabase.functions.invoke(FUNCIO, { body });
+  // Si la sessió havia caducat, es renova i es torna a provar una vegada
+  // deno-lint-ignore no-explicit-any
+  if (error && reintent && [401, 403].includes((error as any).context?.status)) {
+    await supabase.auth.refreshSession();
+    return cridar<T>(body, false);
+  }
   if (error) {
     // deno-lint-ignore no-explicit-any
     const ctx = (error as any).context;
