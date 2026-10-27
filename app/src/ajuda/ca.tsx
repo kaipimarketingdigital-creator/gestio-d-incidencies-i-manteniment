@@ -201,6 +201,7 @@ export const apartats: Apartat[] = [
           <li>El dia que toca, al matí, el bot crea la incidència i avisa al grup amb el <strong>termini</strong>: els dies que hi ha per fer-la.</li>
           <li>Mentre es fa, se li pot posar l'estat <strong>En curs</strong>, <strong>Esperant material</strong> o <strong>Proveïdor extern</strong>, com a qualsevol incidència.</li>
           <li>Si passa el termini i no s'ha tancat, queda marcada <span className="etiqueta fora-termini">Fora de termini</span>: el bot avisa una vegada al grup i s'envia un correu a les adreces del resum diari.</li>
+          <li>Per veure només les incidències del preventiu, prem <B>Veure les incidències del preventiu</B> o, a <strong>Incidències</strong>, tria <strong>Tipus → Preventiu</strong>. El comptador <strong>Fora de termini</strong> porta directament a les que ja han vençut.</li>
           <li>Les dates segueixen el <strong>calendari</strong>: una tasca diària toca cada dia encara que la d'ahir no s'hagi fet, i les dues queden obertes. Si el sistema no ha pogut avisar uns dies, en crea les que faltaven.</li>
           <li>Si una vegada no es va fer i no es farà, posa-li l'estat <strong>No realitzada</strong> (a la fitxa, o a l'historial de la tasca amb «Marcar com a no realitzada»). Queda registrada com a no feta.</li>
         </ul>

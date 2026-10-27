@@ -17,6 +17,7 @@ export default function Incidencies() {
   const estat = params.get("estat") ?? "obertes";
   const prio = params.get("prio") ?? "";
   const cat = params.get("cat") ?? "";
+  const tipus = params.get("tipus") ?? "";
   const ordre = params.get("ordre") ?? "prioritat";
 
   function posar(clau: string, valor: string) {
@@ -48,6 +49,8 @@ export default function Incidencies() {
       if (estat && !["obertes", "tancades", "totes", "fora_termini"].includes(estat) && i.estat !== estat) return false;
       if (prio && i.prioritat !== prio) return false;
       if (cat && i.categoria !== cat) return false;
+      if (tipus === "preventiu" && !i.preventiu_id) return false;
+      if (tipus === "grup" && i.preventiu_id) return false;
       if (text) {
         const on = `${i.id} ${i.descripcio} ${lloc(i)} ${i.observacions ?? ""} ${i.materials ?? ""}`.toLowerCase();
         if (!on.includes(text)) return false;
@@ -60,10 +63,10 @@ export default function Incidencies() {
       r.sort((a, b) => lloc(a).localeCompare(lloc(b), "ca", { numeric: true }));
     } // per defecte ja venen de la més nova a la més antiga
     return r;
-  }, [totes, q, estat, prio, cat, ordre]);
+  }, [totes, q, estat, prio, cat, tipus, ordre]);
 
   const { visibles, controls } = usePaginacio(files, "incidencies", 25);
-  const hiHaFiltres = q || estat !== "obertes" || prio || cat;
+  const hiHaFiltres = q || estat !== "obertes" || prio || cat || tipus;
 
   return (
     <>
@@ -79,6 +82,13 @@ export default function Incidencies() {
       <section className="targeta filtres" aria-label="Filtres">
         <label className="camp cerca">Cerca
           <input type="search" value={q} onChange={(e) => posar("q", e.target.value)} placeholder="Habitació, número o paraula (p. ex. 214, aixeta)" />
+        </label>
+        <label className="camp">Tipus
+          <select value={tipus} onChange={(e) => posar("tipus", e.target.value)}>
+            <option value="">Totes</option>
+            <option value="preventiu">Preventiu</option>
+            <option value="grup">Avisos del grup</option>
+          </select>
         </label>
         <label className="camp">Estat
           <select value={estat} onChange={(e) => posar("estat", e.target.value === "obertes" ? "" : e.target.value)}>

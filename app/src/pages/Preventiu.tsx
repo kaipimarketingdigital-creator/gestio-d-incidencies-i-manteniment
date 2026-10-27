@@ -143,14 +143,21 @@ export default function Preventiu() {
           <h1>Manteniment preventiu</h1>
           <span className="sub">Quan toca, cada tasca avisa al grup amb un termini per fer-la. Les dates segueixen el calendari, encara que una vegada es faci tard.</span>
         </div>
-        {potGestionar && <button type="button" className="boto" onClick={() => setEditant({ tasca: null })}>Nova tasca</button>}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link to="/incidencies?tipus=preventiu" className="boto secundari">Veure les incidències del preventiu</Link>
+          {potGestionar && <button type="button" className="boto" onClick={() => setEditant({ tasca: null })}>Nova tasca</button>}
+        </div>
       </div>
 
       {avis && <p className={`avis ${avis.tipus}`} role={avis.tipus === "error" ? "alert" : "status"}>{avis.text}</p>}
 
       <div className="resum">
         <div className="xifra-gran urgent"><strong className="xifra">{grups.vencudes.length}</strong><span>Per fer ara</span></div>
-        {totalForaTermini > 0 && <div className="xifra-gran urgent"><strong className="xifra">{totalForaTermini}</strong><span>Fora de termini</span></div>}
+        {totalForaTermini > 0 && (
+          <Link to="/incidencies?tipus=preventiu&estat=fora_termini" className="xifra-gran urgent" style={{ textDecoration: "none", color: "inherit" }}>
+            <strong className="xifra">{totalForaTermini}</strong><span>Fora de termini · veure-les</span>
+          </Link>
+        )}
         <div className="xifra-gran alta"><strong className="xifra">{grups.aviat.length}</strong><span>Properes 30 dies</span></div>
         <div className="xifra-gran"><strong className="xifra">{grups.endavant.length}</strong><span>Més endavant</span></div>
         <div className="xifra-gran"><strong className="xifra">{grups.pausades.length}</strong><span>Pausades</span></div>
