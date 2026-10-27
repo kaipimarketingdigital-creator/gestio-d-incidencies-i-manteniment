@@ -33,7 +33,7 @@ const PRIO: Record<string, { nom: string; color: string }> = {
 };
 const ESTAT: Record<string, string> = {
   oberta: "Pendent", en_curs: "En curs", esperant_material: "Esperant material", proveidor_extern: "Proveïdor extern",
-  resolta: "Resolta", anullada: "Anul·lada",
+  resolta: "Resolta", anullada: "Anul·lada", no_realitzada: "No realitzada",
 };
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));

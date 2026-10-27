@@ -7,7 +7,8 @@
 //                              els interpreta amb Gemini i registra o actualitza incidències.
 //   GET  ?accio=configurar     registra el webhook a Telegram (una vegada).
 //   GET  ?accio=models         llista els models de Gemini disponibles (diagnòstic).
-//   GET  ?accio=resum          resum del matí (cron a i 30; &forcar=1 per provar).
+//   GET  ?accio=resum          resum del matí (cron a i 30; &forcar=1 per provar). També crea les execucions
+//                              del preventiu que toquen i avisa de les que han passat el termini.
 //   GET  ?accio=avaluar        examen amb casos reals (no publica res).
 //   POST {accio:"prova_correu"} des del panell (sessió de Direcció): envia ara el resum per correu.
 //   Totes les rutes GET amb ?accio= demanen &clau= (taula config, la porta el cron).
@@ -51,6 +52,10 @@ const NOM_ESTAT: Record<string, string> = {
 const ICONA_ESTAT: Record<string, string> = { en_curs: "🔧", esperant_material: "⏳", proveidor_extern: "🏢" };
 const estatValid = (e?: string | null) => !!e && (ESTATS as readonly string[]).includes(e);
 const avui = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Madrid" }); // AAAA-MM-DD
+
+// Estats tancats (una execució de preventiu també es pot tancar com a «no realitzada»).
+const TANCATS = "(resolta,anullada,no_realitzada)";
+const esTancada = (e: string) => e === "resolta" || e === "anullada" || e === "no_realitzada";
 
 const FET = /^\s*(fet|feta|fets|arreglat|arreglada|ja est[àa]|ja esta|solucionat|resolt|repassar|repaseu|reparat)\b/i;
 
@@ -135,25 +140,14 @@ async function incidenciaDeResposta(xat: number, respostaA: number | null) {
 
 async function resoldre(incId: number, personaId: string | null, nota: string | null, repassar: boolean) {
   const { data: inc } = await db.from("incidencies").select("*").eq("id", incId).maybeSingle();
-  if (!inc || inc.estat === "resolta" || inc.estat === "anullada") return null;
+  if (!inc || esTancada(inc.estat)) return null;
   const obs = nota ? [inc.observacions, nota].filter(Boolean).join("\n") : inc.observacions;
   await db.from("incidencies").update({
     estat: "resolta", resolta_el: new Date().toISOString(), observacions: obs,
     cal_repassar: repassar || inc.cal_repassar,
   }).eq("id", incId);
   await historial(incId, personaId, "estat", inc.estat, "resolta");
-  await programarSeguent(inc);
   return inc;
-}
-
-// Si la incidència venia d'una tasca preventiva, programa la següent revisió.
-async function programarSeguent(inc: Inc) {
-  if (!inc.preventiu_id) return;
-  const { data: t } = await db.from("manteniment_preventiu").select("periodicitat_dies")
-    .eq("id", inc.preventiu_id).maybeSingle();
-  if (!t) return;
-  const seguent = new Date(Date.parse(avui()) + t.periodicitat_dies * 864e5).toISOString().slice(0, 10);
-  await db.from("manteniment_preventiu").update({ ultima_feta: avui(), propera_revisio: seguent }).eq("id", inc.preventiu_id);
 }
 
 // ---------------------------------------------------------------- webhook
@@ -227,15 +221,14 @@ async function rebreBoto(q: any) {
   }
 
   if (tipus === "r" || tipus === "a") {
-    if (inc.estat === "resolta" || inc.estat === "anullada") {
-      await tg("answerCallbackQuery", { callback_query_id: q.id, text: `Ja estava ${inc.estat === "resolta" ? "resolta" : "anul·lada"}.` });
+    if (esTancada(inc.estat)) {
+      await tg("answerCallbackQuery", { callback_query_id: q.id, text: `Ja estava ${inc.estat === "resolta" ? "resolta" : inc.estat === "anullada" ? "anul·lada" : "tancada com a no realitzada"}.` });
       return;
     }
     if (tipus === "r") await resoldre(incId, p?.id ?? null, null, false);
     else {
       await db.from("incidencies").update({ estat: "anullada" }).eq("id", incId);
       await historial(incId, p?.id ?? null, "estat", inc.estat, "anullada");
-      await programarSeguent(inc);
     }
     const marca = tipus === "r" ? `✔ Resolta per ${qui}` : `✖ Anul·lada per ${qui}`;
     await tg("editMessageText", {
@@ -327,7 +320,7 @@ async function processarGrup(msgs: Msg[], llistaZones: Zona[]) {
 
   const { data: obertes } = await db.from("incidencies")
     .select("id, zona_id, zona_text, categoria, prioritat, estat, descripcio, creada_el")
-    .not("estat", "in", "(resolta,anullada)").order("creada_el", { ascending: false }).limit(80);
+    .not("estat", "in", TANCATS).order("creada_el", { ascending: false }).limit(80);
   const zonaPerId = new Map(llistaZones.map((z) => [z.id, z]));
 
   const conversa = await conversaRecent(xat, msgs.map((m: Msg) => m.id));
@@ -463,6 +456,19 @@ function b64(bytes: Uint8Array): string {
 
 // ---------------------------------------------------------------- resum del matí
 
+// Grup on publica el bot: el secret TELEGRAM_GROUP_ID, la taula config (grup_telegram) o, si no, l'últim xat de Telegram
+// (el xat 0 són els missatges importats del WhatsApp).
+async function grupTelegram(): Promise<number | null> {
+  if (GROUP_ID) return Number(GROUP_ID);
+  const { data: c } = await db.from("config").select("valor").eq("clau", "grup_telegram").maybeSingle();
+  if (c?.valor && Number(c.valor)) return Number(c.valor);
+  const { data } = await db.from("missatges").select("tg_xat_id").neq("tg_xat_id", 0)
+    .order("rebut_el", { ascending: false }).limit(1).maybeSingle();
+  return data?.tg_xat_id ?? null;
+}
+const sumarDies = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+const dataCa = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("ca-ES", { day: "numeric", month: "numeric" });
+
 const HORA_RESUM = Number(Deno.env.get("RESUM_HORA") ?? "8");
 const ORDRE_PRIORITAT: Record<string, number> = { urgent: 0, alta: 1, mitjana: 2, baixa: 3 };
 
@@ -478,11 +484,7 @@ async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
   const horaResum = a?.resum_telegram_hora ?? HORA_RESUM;
   if (!forcar && hora !== horaResum) return { enviat: false, motiu: `no és l'hora (${hora} h)` };
 
-  let xat = GROUP_ID ? Number(GROUP_ID) : null;
-  if (!xat) {
-    const { data } = await db.from("missatges").select("tg_xat_id").order("rebut_el", { ascending: false }).limit(1).maybeSingle();
-    xat = data?.tg_xat_id ?? null;
-  }
+  const xat = await grupTelegram();
   if (!xat) return { enviat: false, motiu: "cap grup conegut" };
   // Com a molt un resum cada 50 minuts, encara que algú cridi la URL.
   const { count: recents } = await db.from("missatges_bot").select("id", { count: "exact", head: true })
@@ -492,9 +494,16 @@ async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
   const llistaZones = await zones();
   const zonaPerId = new Map(llistaZones.map((z) => [z.id, z]));
   const preventius = await generarPreventius(xat, zonaPerId);
-  if (a && !a.resum_telegram_actiu && !forcar) return { enviat: false, motiu: "resum de Telegram desactivat", preventius };
+  let foraTermini: unknown = 0;
+  try {
+    foraTermini = await avisarForaTermini(xat, zonaPerId, a);
+  } catch (e) {
+    console.error("fora de termini", e);
+    foraTermini = String(e).slice(0, 200);
+  }
+  if (a && !a.resum_telegram_actiu && !forcar) return { enviat: false, motiu: "resum de Telegram desactivat", preventius, foraTermini };
   const { data: obertes } = await db.from("incidencies").select("*")
-    .not("estat", "in", "(resolta,anullada)").order("creada_el");
+    .not("estat", "in", TANCATS).order("creada_el");
   const llista = (obertes ?? []).sort((a: Inc, b: Inc) =>
     (ORDRE_PRIORITAT[a.prioritat] ?? 9) - (ORDRE_PRIORITAT[b.prioritat] ?? 9));
 
@@ -513,12 +522,13 @@ async function resumDiari(forcar: boolean): Promise<Record<string, unknown>> {
   } else {
     text = `☀ Bon dia! Hi ha ${llista.length} ${llista.length === 1 ? "incidència pendent" : "incidències pendents"}:\n\n` +
       llista.slice(0, 30).map((i: Inc) =>
-        `${marca[i.prioritat] ?? "•"} #${i.id} ${nomZona(zonaPerId.get(i.zona_id), i.zona_text)} · ${i.descripcio} (${dies(i.creada_el)})${espera[i.estat] ?? ""}`
+        `${marca[i.prioritat] ?? "•"} #${i.id} ${nomZona(zonaPerId.get(i.zona_id), i.zona_text)} · ${i.descripcio} (${dies(i.creada_el)})${espera[i.estat] ?? ""}` +
+        (i.preventiu_id && i.data_limit && i.data_limit < avui() ? " · ⚠️ fora de termini" : "")
       ).join("\n") +
       (llista.length > 30 ? `\n… i ${llista.length - 30} més.` : "");
   }
   await enviar(xat, text, null, null, "resum");
-  return { enviat: true, pendents: llista.length, preventius };
+  return { enviat: true, pendents: llista.length, preventius, foraTermini };
 }
 
 // ---------------------------------------------------------------- resum per correu
@@ -543,7 +553,7 @@ async function resumCorreu(forcar: boolean, destinataris?: string[]): Promise<Re
     const n = Math.floor((Date.now() - Date.parse(d)) / 864e5);
     return n === 0 ? "avui" : n === 1 ? "des d'ahir" : `fa ${n} dies`;
   };
-  const { data: obertes } = await db.from("incidencies").select("*").not("estat", "in", "(resolta,anullada)").order("creada_el");
+  const { data: obertes } = await db.from("incidencies").select("*").not("estat", "in", TANCATS).order("creada_el");
   const pendents: FilaResum[] = (obertes ?? [])
     .sort((x: Inc, y: Inc) => (ORDRE_PRIORITAT[x.prioritat] ?? 9) - (ORDRE_PRIORITAT[y.prioritat] ?? 9))
     .map((i: Inc) => ({ id: i.id, lloc: lloc(i), descripcio: i.descripcio, prioritat: i.prioritat, estat: i.estat, dies: dies(i.creada_el) }));
@@ -596,29 +606,108 @@ async function provaCorreu(req: Request, cos: { a?: string[] }): Promise<Respons
   }
 }
 
-// Tasques preventives que toquen avui: cada una es converteix en una incidència i s'avisa al grup.
+// Tasques preventives que toquen: cada vegada que toca es crea una execució (una incidència) amb el seu termini.
+// El calendari és fix: si el sistema no ha pogut avisar uns dies, es recuperen les execucions perdudes
+// (fins a 31 per tasca) i queden obertes, juntes, fins que algú les tanqui.
 async function generarPreventius(xat: number, zonaPerId: Map<string, Zona>): Promise<number> {
+  const avuiD = avui();
   const { data: tasques } = await db.from("manteniment_preventiu").select("*")
-    .eq("activa", true).lte("propera_revisio", avui());
+    .eq("activa", true).is("arxivada_el", null).lte("propera_revisio", avuiD);
   let creades = 0;
   for (const t of tasques ?? []) {
-    const { count: oberta } = await db.from("incidencies").select("id", { count: "exact", head: true })
-      .eq("preventiu_id", t.id).not("estat", "in", "(resolta,anullada)");
-    if (oberta) continue;
-    const { data: inc, error } = await db.from("incidencies").insert({
-      zona_id: t.zona_id, categoria: t.categoria ?? "tasca", prioritat: "mitjana", descripcio: t.tasca,
-      assignada_a: t.responsable_id ?? null,
-      observacions: `Manteniment preventiu (cada ${t.periodicitat_dies} dies)${t.observacions ? `\n${t.observacions}` : ""}`, preventiu_id: t.id, tg_xat_id: xat,
-    }).select("*").single();
-    if (error) { console.error("preventiu", error); continue; }
-    await historial(inc.id, null, "estat", null, "oberta");
-    const conf = await enviar(xat,
-      `🗓 Manteniment preventiu · Incidència #${inc.id}\n${resum(inc, zonaPerId.get(inc.zona_id))}\nCada ${t.periodicitat_dies} dies.`,
-      null, inc.id, "confirmacio", { reply_markup: botons(inc.id) });
-    if (conf) await db.from("incidencies").update({ tg_confirmacio_id: conf }).eq("id", inc.id);
-    creades++;
+    const periode = Math.max(1, t.periodicitat_dies);
+    const termini = t.termini_dies ?? 7;
+    const dates: string[] = [];
+    let d = t.propera_revisio as string;
+    while (d <= avuiD) { dates.push(d); d = sumarDies(d, periode); }
+    const perdudes = dates.length > 31 ? dates.length - 31 : 0;
+    const noves: Inc[] = [];
+    for (const prevista of dates.slice(perdudes)) {
+      const { data: inc, error } = await db.from("incidencies").insert({
+        zona_id: t.zona_id, categoria: t.categoria ?? "tasca", prioritat: "mitjana", descripcio: t.tasca,
+        assignada_a: t.responsable_id ?? null, preventiu_id: t.id, tg_xat_id: xat,
+        data_prevista: prevista, data_limit: sumarDies(prevista, termini),
+        creada_el: prevista < avuiD ? `${prevista}T08:00:00+02:00` : new Date().toISOString(),
+        observacions: `Manteniment preventiu (cada ${periode} dies, termini ${termini} dies)` +
+          (prevista < avuiD ? `\nTocava el ${dataCa(prevista)} i no es va avisar: s'ha creat més tard.` : "") +
+          (t.observacions ? `\n${t.observacions}` : ""),
+      }).select("*").single();
+      if (error) { console.error("preventiu", error); continue; }
+      await historial(inc.id, null, "estat", null, "oberta");
+      noves.push(inc);
+      creades++;
+    }
+    // La propera vegada que tocarà, segons el calendari
+    await db.from("manteniment_preventiu").update({ propera_revisio: d }).eq("id", t.id);
+    if (!noves.length) continue;
+
+    const darrera = noves[noves.length - 1];
+    const anteriors = noves.slice(0, -1);
+    const limit = darrera.data_limit === darrera.data_prevista ? "avui mateix" : `fins al ${dataCa(darrera.data_limit)}`;
+    const text = `🗓 Manteniment preventiu · Incidència #${darrera.id}\n${resum(darrera, zonaPerId.get(darrera.zona_id))}\n` +
+      `Cada ${periode === 1 ? "dia" : `${periode} dies`} · ⏱ Termini: ${limit}.` +
+      (anteriors.length ? `\n\nℹ️ No s'havien creat ${anteriors.length} vegades anteriors (${anteriors.map((x) => `#${x.id}`).join(", ")}); ` +
+        `queden obertes. Si no es van fer, tanqueu-les com a «No realitzada» des del panell.` : "") +
+      (perdudes ? `\n(${perdudes} vegades més antigues no s'han creat.)` : "");
+    const conf = await enviar(xat, text, null, darrera.id, "confirmacio", { reply_markup: botons(darrera.id) });
+    if (conf) await db.from("incidencies").update({ tg_confirmacio_id: conf }).eq("id", darrera.id);
   }
   return creades;
+}
+
+// Execucions de preventiu que han passat el termini i encara són obertes: un sol avís fort al grup i un correu.
+async function avisarForaTermini(xat: number, zonaPerId: Map<string, Zona>, a: Ajustos | null): Promise<number> {
+  const { data: tard } = await db.from("incidencies").select("*")
+    .not("preventiu_id", "is", null).not("estat", "in", TANCATS)
+    .lt("data_limit", avui()).is("avis_fora_termini_el", null).order("data_limit");
+  if (!tard?.length) return 0;
+  const ids = [...new Set(tard.map((i: Inc) => i.assignada_a).filter(Boolean))];
+  const { data: resp } = ids.length ? await db.from("persones").select("id, nom").in("id", ids) : { data: [] };
+  const nomResp = new Map((resp ?? []).map((r: Inc) => [r.id, r.nom]));
+  const estatTxt = (e: string) => (NOM_ESTAT[e] ? ` · ${ICONA_ESTAT[e] ?? ""} ${NOM_ESTAT[e]}` : "");
+
+  // Un missatge per tasca (si una tasca diària en té diverses, van juntes)
+  const perTasca = new Map<string, Inc[]>();
+  for (const i of tard as Inc[]) perTasca.set(i.preventiu_id, [...(perTasca.get(i.preventiu_id) ?? []), i]);
+  for (const grup of perTasca.values()) {
+    const i = grup[grup.length - 1];
+    const qui = nomResp.get(i.assignada_a);
+    const capcal = grup.length === 1
+      ? `⚠️ FORA DE TERMINI · Incidència #${i.id}`
+      : `⚠️ FORA DE TERMINI · ${grup.length} vegades sense fer (${grup.map((x) => `#${x.id}`).join(", ")})`;
+    await enviar(xat,
+      `${capcal}\n${nomZona(zonaPerId.get(i.zona_id), i.zona_text)} · ${i.descripcio}\n` +
+      (grup.length === 1
+        ? `Havia d'estar feta el ${dataCa(i.data_limit)}${estatTxt(i.estat)}.`
+        : `Terminis: ${grup.map((x) => dataCa(x.data_limit)).join(", ")}.`) +
+      (qui ? `\nResponsable: ${qui}.` : "") +
+      `\nSi ja s'ha fet, responeu «fet». Si no es farà, tanqueu-la com a «No realitzada» des del panell.`,
+      i.tg_confirmacio_id ?? null, i.id, "fora_termini", { reply_markup: botons(i.id) });
+  }
+  await db.from("incidencies").update({ avis_fora_termini_el: new Date().toISOString() }).in("id", tard.map((i: Inc) => i.id));
+
+  // Correu a les adreces del resum diari
+  if (a?.resum_correu_destinataris?.length) {
+    const files = (tard as Inc[]).map((i) => ({
+      id: i.id, lloc: nomZona(zonaPerId.get(i.zona_id), i.zona_text), tasca: i.descripcio, limit: dataCa(i.data_limit),
+      estat: NOM_ESTAT[i.estat] ?? "pendent", qui: nomResp.get(i.assignada_a) ?? "—",
+    }));
+    const assumpte = `⚠️ Manteniment preventiu fora de termini · ${files.length} ${files.length === 1 ? "tasca" : "tasques"}`;
+    const esc = (x: string) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+    const html = `<div style="font-family:Arial,sans-serif;color:#1f2a37"><h2 style="color:#b42318">Tasques de manteniment preventiu fora de termini</h2>` +
+      `<p>Aquestes tasques havien d'estar fetes i encara estan obertes:</p><table cellpadding="6" style="border-collapse:collapse">` +
+      `<tr style="background:#004B85;color:#fff"><th align="left">#</th><th align="left">Lloc</th><th align="left">Tasca</th><th align="left">Termini</th><th align="left">Estat</th><th align="left">Responsable</th></tr>` +
+      files.map((f) => `<tr style="border-bottom:1px solid #ddd"><td>${f.id}</td><td>${esc(f.lloc)}</td><td>${esc(f.tasca)}</td><td>${f.limit}</td><td>${esc(f.estat)}</td><td>${esc(f.qui)}</td></tr>`).join("") +
+      `</table><p><a href="https://manteniment.hotelrull.com/#/preventiu">Obrir el panell de manteniment</a></p></div>`;
+    const text = `Tasques de manteniment preventiu fora de termini:\n` +
+      files.map((f) => `#${f.id} · ${f.lloc} · ${f.tasca} · termini ${f.limit} · ${f.estat} · ${f.qui}`).join("\n");
+    try {
+      await enviarCorreu(a, a.resum_correu_destinataris, assumpte, html, text);
+    } catch (e) {
+      console.error("correu fora de termini", e);
+    }
+  }
+  return tard.length;
 }
 
 // ---------------------------------------------------------------- examen amb casos reals (no publica res)

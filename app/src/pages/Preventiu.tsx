@@ -5,7 +5,7 @@ import { LlistaPaginada } from "../components/Paginacio";
 import { useSessio } from "../lib/sessio";
 import EditorMaterials, { MATERIALS_PREVENTIU, carregarMaterials, desarMaterials, totalMaterials, validarMaterials, type Material } from "../components/Materials";
 import {
-  CATEGORIES, ESTATS_OBERTS, NOM_CATEGORIA, NOM_ESTAT, dataCurta,
+  CATEGORIES, ESTATS_OBERTS, NOM_CATEGORIA, NOM_ESTAT, dataCurta, diaCurt, foraTermini,
   type Categoria, type Estat, type Persona, type Zona,
 } from "../lib/incidencies";
 
@@ -22,10 +22,11 @@ type Tasca = {
   ultima_feta: string | null;
   pressupost: number | null;
   arxivada_el: string | null;
+  termini_dies: number;
 };
-type Execucio = { id: number; preventiu_id: string; estat: Estat; cost: number | null; materials: string | null; creada_el: string; resolta_el: string | null };
+type Execucio = { id: number; preventiu_id: string; estat: Estat; cost: number | null; materials: string | null; creada_el: string; resolta_el: string | null; data_prevista: string | null; data_limit: string | null };
 
-const PERIODES: [number, string][] = [[7, "Setmanal"], [15, "Quinzenal"], [30, "Mensual"], [90, "Trimestral"], [180, "Semestral"], [365, "Anual"]];
+const PERIODES: [number, string][] = [[1, "Diària"], [7, "Setmanal"], [15, "Quinzenal"], [30, "Mensual"], [90, "Trimestral"], [180, "Semestral"], [365, "Anual"]];
 
 function avuiISO() {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Madrid" }); // AAAA-MM-DD
@@ -43,14 +44,27 @@ function quan(data: string) {
 function periode(dies: number) {
   return PERIODES.find(([d]) => d === dies)?.[1] ?? `Cada ${dies} dies`;
 }
+// Termini que es proposa segons la freqüència (es pot canviar)
+function terminiSuggerit(dies: number) {
+  if (dies <= 1) return 0;
+  if (dies <= 7) return 2;
+  if (dies <= 15) return 5;
+  if (dies <= 30) return 7;
+  if (dies <= 180) return 15;
+  return 30;
+}
+const TERMINIS: [number, string][] = [[0, "El mateix dia"], [1, "1 dia"], [2, "2 dies"], [3, "3 dies"], [5, "5 dies"], [7, "1 setmana"], [15, "15 dies"], [30, "1 mes"]];
+const nomTermini = (d: number) => TERMINIS.find(([x]) => x === d)?.[1] ?? `${d} dies`;
+
 const vegades = (n: number) => (n === 0 ? "Encara no s'ha fet" : n === 1 ? "Feta 1 vegada" : `Feta ${n} vegades`);
 const euros = (n: number | null | undefined) =>
   n === null || n === undefined ? "—" : n.toLocaleString("ca-ES", { style: "currency", currency: "EUR" });
 const num = (s: string) => (s.trim() === "" ? null : Number(s.replace(",", ".")));
 
 type Grup = "vencudes" | "aviat" | "endavant" | "pausades" | "arxivades";
-function grupDe(t: Tasca): Grup {
+function grupDe(t: Tasca, obertes: number): Grup {
   if (t.arxivada_el) return "arxivades";
+  if (obertes > 0) return "vencudes";
   if (!t.activa) return "pausades";
   const d = diesFins(t.propera_revisio);
   if (d <= 0) return "vencudes";
@@ -58,7 +72,7 @@ function grupDe(t: Tasca): Grup {
   return "endavant";
 }
 const NOM_GRUP: Record<Grup, string> = {
-  vencudes: "Toca ara",
+  vencudes: "Per fer ara",
   aviat: "Properes 30 dies",
   endavant: "Més endavant",
   pausades: "Pausades",
@@ -81,7 +95,7 @@ export default function Preventiu() {
       supabase.from("manteniment_preventiu").select("*").order("propera_revisio"),
       supabase.from("zones").select("id, nom, tipus, planta").eq("activa", true).order("planta").order("nom"),
       supabase.from("persones").select("id, nom, actiu").order("nom"),
-      supabase.from("incidencies").select("id, preventiu_id, estat, cost, materials, creada_el, resolta_el").not("preventiu_id", "is", null).order("creada_el", { ascending: false }),
+      supabase.from("incidencies").select("id, preventiu_id, estat, cost, materials, creada_el, resolta_el, data_prevista, data_limit").not("preventiu_id", "is", null).order("creada_el", { ascending: false }),
     ]);
     if (t.error) setAvis({ tipus: "error", text: "No s'han pogut carregar les tasques." });
     setTasques((t.data ?? []) as Tasca[]);
@@ -94,12 +108,15 @@ export default function Preventiu() {
   const nomZona = (id: string | null) => zones.find((z) => z.id === id)?.nom ?? "Tot l'hotel";
   const nomPersona = (id: string | null) => persones.find((p) => p.id === id)?.nom ?? "—";
   const execDe = (id: string) => execucions.filter((x) => x.preventiu_id === id);
+  const obertesDe = (id: string) => execDe(id).filter((x) => ESTATS_OBERTS.includes(x.estat))
+    .sort((a, b) => (a.data_prevista ?? a.creada_el).localeCompare(b.data_prevista ?? b.creada_el));
 
   const grups = useMemo(() => {
     const g: Record<Grup, Tasca[]> = { vencudes: [], aviat: [], endavant: [], pausades: [], arxivades: [] };
-    (tasques ?? []).forEach((t) => g[grupDe(t)].push(t));
+    (tasques ?? []).forEach((t) => g[grupDe(t, obertesDe(t.id).length)].push(t));
     return g;
-  }, [tasques]);
+  }, [tasques, execucions]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totalForaTermini = execucions.filter(foraTermini).length;
 
   async function accio(t: Tasca, canvis: Partial<Tasca>, ok: string) {
     const { error } = await supabase.from("manteniment_preventiu").update(canvis).eq("id", t.id);
@@ -124,7 +141,7 @@ export default function Preventiu() {
       <div className="capcalera">
         <div>
           <h1>Manteniment preventiu</h1>
-          <span className="sub">Cada tasca crea una incidència al grup quan toca; en tancar-la es programa la següent.</span>
+          <span className="sub">Quan toca, cada tasca avisa al grup amb un termini per fer-la. Les dates segueixen el calendari, encara que una vegada es faci tard.</span>
         </div>
         {potGestionar && <button type="button" className="boto" onClick={() => setEditant({ tasca: null })}>Nova tasca</button>}
       </div>
@@ -132,7 +149,8 @@ export default function Preventiu() {
       {avis && <p className={`avis ${avis.tipus}`} role={avis.tipus === "error" ? "alert" : "status"}>{avis.text}</p>}
 
       <div className="resum">
-        <div className="xifra-gran urgent"><strong className="xifra">{grups.vencudes.length}</strong><span>Toca ara</span></div>
+        <div className="xifra-gran urgent"><strong className="xifra">{grups.vencudes.length}</strong><span>Per fer ara</span></div>
+        {totalForaTermini > 0 && <div className="xifra-gran urgent"><strong className="xifra">{totalForaTermini}</strong><span>Fora de termini</span></div>}
         <div className="xifra-gran alta"><strong className="xifra">{grups.aviat.length}</strong><span>Properes 30 dies</span></div>
         <div className="xifra-gran"><strong className="xifra">{grups.endavant.length}</strong><span>Més endavant</span></div>
         <div className="xifra-gran"><strong className="xifra">{grups.pausades.length}</strong><span>Pausades</span></div>
@@ -155,18 +173,22 @@ export default function Preventiu() {
               <tbody>
                 {visibles.map((t) => {
                   const d = diesFins(t.propera_revisio);
-                  const oberta = execDe(t.id).find((x) => ESTATS_OBERTS.includes(x.estat));
+                  const obertes = obertesDe(t.id);
+                  const oberta = obertes[0];
+                  const tard = obertes.filter(foraTermini).length;
                   return (
                     <tr key={t.id}>
                       <td><button type="button" className="enllac-boto" onClick={() => setEditant({ tasca: t })}>{t.tasca}</button>
                         <span className="sota">{NOM_CATEGORIA[t.categoria]} · {vegades(execDe(t.id).filter((x) => x.estat === "resolta").length)}</span></td>
                       <td>{nomZona(t.zona_id)}</td>
-                      <td>{periode(t.periodicitat_dies)}</td>
+                      <td>{periode(t.periodicitat_dies)}<span className="sota">Termini: {nomTermini(t.termini_dies).toLowerCase()}</span></td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         {oberta ? (
                           <>
                             <Link to={`/incidencies/${oberta.id}`}>Avisat: #{oberta.id}</Link>
-                            <span className="sota">{NOM_ESTAT[oberta.estat]} des del {dataCurta(oberta.creada_el)}</span>
+                            {obertes.length > 1 && <> <button type="button" className="enllac-boto" onClick={() => setEditant({ tasca: t })}>i {obertes.length - 1} més</button></>}
+                            {tard > 0 && <span className="etiqueta fora-termini" style={{ marginLeft: 6 }}>{tard === 1 ? "Fora de termini" : `${tard} fora de termini`}</span>}
+                            <span className="sota">{NOM_ESTAT[oberta.estat]} · termini {oberta.data_limit ? diaCurt(oberta.data_limit) : "—"}</span>
                           </>
                         ) : (
                           <>
@@ -203,6 +225,7 @@ export default function Preventiu() {
           persones={persones}
           execucions={editant.tasca && !editant.copia ? execDe(editant.tasca.id) : []}
           onTancar={() => setEditant(null)}
+          onRefrescar={carregar}
           onDesat={async (text) => { setAvis({ tipus: "ok", text }); setEditant(null); await carregar(); }}
           onDuplicar={(t) => setEditant({ tasca: t, copia: true })}
           onPausar={(t) => accio(t, { activa: !t.activa }, t.activa ? "Tasca pausada: no generarà avisos." : "Tasca reactivada.")}
@@ -220,7 +243,7 @@ export default function Preventiu() {
 type PropsEditor = {
   tasca: Tasca | null; copia: boolean; potGestionar: boolean;
   zones: Zona[]; persones: Persona[]; execucions: Execucio[];
-  onTancar: () => void; onDesat: (text: string) => void;
+  onTancar: () => void; onDesat: (text: string) => void; onRefrescar: () => void;
   onDuplicar: (t: Tasca) => void; onPausar: (t: Tasca) => void; onArxivar: (t: Tasca) => void; onEsborrar: (t: Tasca) => void;
 };
 
@@ -234,6 +257,7 @@ function Editor(p: PropsEditor) {
     categoria: (tasca?.categoria ?? "tasca") as Categoria,
     periodicitat_dies: String(tasca?.periodicitat_dies ?? 30),
     propera_revisio: tasca && !copia ? tasca.propera_revisio : avuiISO(),
+    termini_dies: String(tasca?.termini_dies ?? terminiSuggerit(tasca?.periodicitat_dies ?? 30)),
     responsable_id: tasca?.responsable_id ?? "",
     pressupost: tasca?.pressupost == null ? "" : String(tasca.pressupost).replace(".", ","),
     observacions: tasca?.observacions ?? "",
@@ -259,7 +283,21 @@ function Editor(p: PropsEditor) {
     }
   }, [tasca, copia]);
 
-  const posar = (k: keyof typeof f, v: string) => setF({ ...f, [k]: v });
+  const [terminiTocat, setTerminiTocat] = useState(!!tasca);
+  const posar = (k: keyof typeof f, v: string) => setF((x) => {
+    const n = { ...x, [k]: v };
+    // Mentre no s'hagi triat un termini a mà, es proposa el que toca per a la freqüència
+    if (k === "periodicitat_dies" && !terminiTocat && Number(v) > 0) n.termini_dies = String(terminiSuggerit(Number(v)));
+    return n;
+  });
+  const [marcant, setMarcant] = useState<number | null>(null);
+  async function noRealitzada(x: Execucio) {
+    setMarcant(x.id);
+    const { error } = await supabase.from("incidencies").update({ estat: "no_realitzada" }).eq("id", x.id);
+    if (!error) await supabase.from("historial").insert({ incidencia_id: x.id, camp: "estat", valor_anterior: x.estat, valor_nou: "no_realitzada" });
+    setMarcant(null);
+    p.onRefrescar();
+  }
   const totalPrevist = totalMaterials(materials);
   const tancades = p.execucions.filter((x) => x.estat === "resolta");
   const gastMitja = tancades.length ? tancades.reduce((s, x) => s + (x.cost ?? 0), 0) / tancades.length : null;
@@ -278,6 +316,8 @@ function Editor(p: PropsEditor) {
     const pressupost = num(f.pressupost);
     const e2: Record<string, string> = {};
     if (!Number.isInteger(dies) || dies < 1) e2.periodicitat = "Ha de ser un nombre de dies sencer (1 o més).";
+    const termini = Number(f.termini_dies);
+    if (!Number.isInteger(termini) || termini < 0 || termini > 365) e2.termini = "Ha de ser un nombre de dies entre 0 i 365.";
     if (pressupost !== null && (Number.isNaN(pressupost) || pressupost < 0)) e2.pressupost = "Escriu un import, per exemple 45,00.";
     Object.assign(e2, validarMaterials(materials));
     setErrors(e2);
@@ -289,7 +329,7 @@ function Editor(p: PropsEditor) {
     setDesant(true);
     const fila = {
       tasca: f.tasca.trim(), zona_id: f.zona_id || null, categoria: f.categoria, periodicitat_dies: dies,
-      propera_revisio: f.propera_revisio, responsable_id: f.responsable_id || null, pressupost,
+      propera_revisio: f.propera_revisio, termini_dies: termini, responsable_id: f.responsable_id || null, pressupost,
       observacions: f.observacions.trim() || null,
     };
     const r = nova
@@ -341,7 +381,7 @@ function Editor(p: PropsEditor) {
             <label className="camp">Freqüència
               <select value={PERIODES.some(([d]) => String(d) === f.periodicitat_dies) ? f.periodicitat_dies : "altre"}
                 onChange={(e) => posar("periodicitat_dies", e.target.value === "altre" ? "60" : e.target.value)}>
-                {PERIODES.map(([d, n]) => <option key={d} value={d}>{n} ({d} dies)</option>)}
+                {PERIODES.map(([d, n]) => <option key={d} value={d}>{d === 1 ? n : `${n} (${d} dies)`}</option>)}
                 <option value="altre">Un altre nombre de dies…</option>
               </select>
             </label>
@@ -355,6 +395,23 @@ function Editor(p: PropsEditor) {
             <label className="camp">Propera vegada
               <input type="date" required value={f.propera_revisio} onChange={(e) => posar("propera_revisio", e.target.value)} />
             </label>
+          </div>
+          <div className="fila-camps">
+            <label className="camp">Termini per fer-la
+              <select value={TERMINIS.some(([d]) => String(d) === f.termini_dies) ? f.termini_dies : "altre"} aria-describedby="a-termini"
+                onChange={(e) => { setTerminiTocat(true); posar("termini_dies", e.target.value === "altre" ? "10" : e.target.value); treureError("termini"); }}>
+                {TERMINIS.map(([d, n]) => <option key={d} value={d}>{n}</option>)}
+                <option value="altre">Un altre nombre de dies…</option>
+              </select>
+              <span id="a-termini" className="ajuda-camp">Dies des que s'avisa al grup. Si passen i no s'ha tancat, s'envia un avís de «fora de termini» al grup i per correu.</span>
+            </label>
+            {!TERMINIS.some(([d]) => String(d) === f.termini_dies) && (
+              <label className="camp">Dies de termini
+                <input type="number" min={0} max={365} required value={f.termini_dies} aria-invalid={!!err("termini")} aria-describedby="e-termini"
+                  onChange={(e) => { setTerminiTocat(true); posar("termini_dies", e.target.value); treureError("termini"); }} />
+                {err("termini") && <span id="e-termini" className="error-camp">{err("termini")}</span>}
+              </label>
+            )}
           </div>
           <div className="fila-camps">
             <label className="camp">Responsable
@@ -397,9 +454,16 @@ function Editor(p: PropsEditor) {
               <ul className="llista-altres">
                 {p.execucions.map((x) => (
                   <li key={x.id}>
-                    <Link to={`/incidencies/${x.id}`}>#{x.id} · {dataCurta(x.creada_el)} · {NOM_ESTAT[x.estat]}</Link>
+                    <Link to={`/incidencies/${x.id}`}>#{x.id} · {x.data_prevista ? diaCurt(x.data_prevista) : dataCurta(x.creada_el)} · {NOM_ESTAT[x.estat]}</Link>
+                    {foraTermini(x) && <span className="etiqueta fora-termini" style={{ marginLeft: 6 }}>Fora de termini</span>}
                     <span>
-                      {ESTATS_OBERTS.includes(x.estat) ? "Pendent de fer" : <>Gastat: {euros(x.cost)}</>}
+                      {ESTATS_OBERTS.includes(x.estat)
+                        ? <>Pendent de fer{x.data_limit && ` · termini ${diaCurt(x.data_limit)}`}
+                          {potGestionar && (
+                            <> · <button type="button" className="enllac-boto" disabled={marcant === x.id} onClick={() => noRealitzada(x)}>
+                              {marcant === x.id ? "Desant…" : "Marcar com a no realitzada"}</button></>
+                          )}</>
+                        : x.estat === "no_realitzada" ? "No es va fer" : <>Gastat: {euros(x.cost)}</>}
                       {tasca.pressupost != null && x.cost != null && x.cost > tasca.pressupost && " (per sobre del pressupost)"}
                       {x.materials && ` · ${x.materials}`}
                     </span>

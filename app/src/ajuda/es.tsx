@@ -197,11 +197,19 @@ export const apartats: Apartat[] = [
     titol: "9. Panel: Mantenimiento preventivo",
     cos: (
       <>
-        <p>Las tareas que hay que hacer cada cierto tiempo. La lista las agrupa en <strong>Toca ara</strong> (toca ahora), <strong>Properes 30 dies</strong>, <strong>Més endavant</strong> (más adelante) y <strong>Pausades</strong>. Si una tarea ya ha generado el aviso y aún no se ha hecho, pone «Avisat: #15».</p>
+        <p>Las tareas que hay que hacer cada cierto tiempo. La lista las agrupa en <strong>Per fer ara</strong> (ya se ha avisado y aún no se ha cerrado), <strong>Properes 30 dies</strong>, <strong>Més endavant</strong> (más adelante) y <strong>Pausades</strong>. Si una tarea ya ha generado el aviso, pone «Avisat: #15» y el plazo.</p>
+        <h3>Cómo funciona cada vez</h3>
+        <ul>
+          <li>El día que toca, por la mañana, el bot crea la incidencia y avisa al grupo con el <strong>plazo</strong>: los días que hay para hacerla.</li>
+          <li>Mientras se hace, se le puede poner el estado <strong>En curs</strong> (en curso), <strong>Esperant material</strong> (esperando material) o <strong>Proveïdor extern</strong> (proveedor externo), como a cualquier incidencia.</li>
+          <li>Si pasa el plazo y no se ha cerrado, queda marcada <span className="etiqueta fora-termini">Fora de termini</span> (fuera de plazo): el bot avisa una vez al grupo y se envía un correo a las direcciones del resumen diario.</li>
+          <li>Las fechas siguen el <strong>calendario</strong>: una tarea diaria toca cada día aunque la de ayer no se haya hecho, y las dos quedan abiertas. Si el sistema no ha podido avisar unos días, crea las que faltaban.</li>
+          <li>Si una vez no se hizo y no se hará, ponle el estado <strong>No realitzada</strong> (no realizada), en la ficha o en el historial de la tarea con «Marcar com a no realitzada». Queda registrada como no hecha.</li>
+        </ul>
         <h3>Crear o editar una tarea</h3>
         <Passos>
           <li>Pulsa <B>Nova tasca</B> (o <B>Obrir</B> en una existente).</li>
-          <li>Rellena qué hay que hacer, el lugar (o «Tot l'hotel»), la categoría, la <strong>frecuencia</strong> (semanal, mensual, trimestral… o un número de días) y la <strong>próxima vez</strong>.</li>
+          <li>Rellena qué hay que hacer, el lugar (o «Tot l'hotel»), la categoría, la <strong>frecuencia</strong> (diaria, semanal, mensual… o un número de días), la <strong>próxima vez</strong> y el <strong>plazo para hacerla</strong> (se propone según la frecuencia; se puede cambiar).</li>
           <li>Opcional: <strong>responsable</strong> (se le asignará la incidencia), <strong>presupuesto por vez</strong>, instrucciones y los <strong>costes</strong> de cada vez (concepto, cantidad, unidad y precio; el total se calcula solo).</li>
           <li>Pulsa <B>Desar canvis</B>. Si hay algún campo por revisar, aparece marcado en rojo con la explicación debajo.</li>
         </Passos>

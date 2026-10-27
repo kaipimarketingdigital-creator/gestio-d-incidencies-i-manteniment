@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import { usePaginacio } from "../components/Paginacio";
 import {
   CATEGORIES, ESTATS, ESTATS_OBERTS, NOM_CATEGORIA, NOM_ESTAT, NOM_PRIORITAT, ORDRE_PRIORITAT, PRIORITATS,
-  dataCurta, lloc, type Incidencia,
+  dataCurta, foraTermini, lloc, type Incidencia,
 } from "../lib/incidencies";
 
 // Els filtres viuen a l'adreça (…/incidencies?estat=obertes&prio=urgent): es poden desar o compartir.
@@ -44,7 +44,8 @@ export default function Incidencies() {
     const r = totes.filter((i) => {
       if (estat === "obertes" && !ESTATS_OBERTS.includes(i.estat)) return false;
       if (estat === "tancades" && ESTATS_OBERTS.includes(i.estat)) return false;
-      if (estat && !["obertes", "tancades", "totes"].includes(estat) && i.estat !== estat) return false;
+      if (estat === "fora_termini" && !foraTermini(i)) return false;
+      if (estat && !["obertes", "tancades", "totes", "fora_termini"].includes(estat) && i.estat !== estat) return false;
       if (prio && i.prioritat !== prio) return false;
       if (cat && i.categoria !== cat) return false;
       if (text) {
@@ -84,6 +85,7 @@ export default function Incidencies() {
             <option value="obertes">Obertes</option>
             <option value="tancades">Tancades</option>
             <option value="totes">Totes</option>
+            <option value="fora_termini">Preventiu fora de termini</option>
             <optgroup label="Un estat concret">
               {ESTATS.map((e) => <option key={e} value={e}>{NOM_ESTAT[e]}</option>)}
             </optgroup>
@@ -134,6 +136,7 @@ export default function Incidencies() {
                     <Link to={`/incidencies/${i.id}`} className="enllac-fila">{i.descripcio}</Link>
                     {i.cal_repassar && <span className="etiqueta pendent" style={{ marginLeft: 8 }}>Repassar</span>}
                     {i.preventiu_id && <span className="etiqueta convidat" style={{ marginLeft: 8 }}>Preventiu</span>}
+                    {foraTermini(i) && <span className="etiqueta fora-termini" style={{ marginLeft: 8 }}>Fora de termini</span>}
                   </td>
                   <td><span className={`prio ${i.prioritat}`}>{NOM_PRIORITAT[i.prioritat]}</span></td>
                   <td><span className={`estat ${i.estat}`}>{NOM_ESTAT[i.estat]}</span></td>

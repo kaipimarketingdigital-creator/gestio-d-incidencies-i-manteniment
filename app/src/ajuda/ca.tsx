@@ -195,11 +195,19 @@ export const apartats: Apartat[] = [
     titol: "9. Panell: Manteniment preventiu",
     cos: (
       <>
-        <p>Les tasques que s'han de fer cada cert temps. La llista les agrupa en <strong>Toca ara</strong>, <strong>Properes 30 dies</strong>, <strong>Més endavant</strong> i <strong>Pausades</strong>. Si una tasca ja ha generat l'avís i encara no s'ha fet, hi diu «Avisat: #15».</p>
+        <p>Les tasques que s'han de fer cada cert temps. La llista les agrupa en <strong>Per fer ara</strong> (ja s'ha avisat i encara no s'ha tancat), <strong>Properes 30 dies</strong>, <strong>Més endavant</strong> i <strong>Pausades</strong>. Si una tasca ja ha generat l'avís, hi diu «Avisat: #15» i el termini.</p>
+        <h3>Com funciona cada vegada</h3>
+        <ul>
+          <li>El dia que toca, al matí, el bot crea la incidència i avisa al grup amb el <strong>termini</strong>: els dies que hi ha per fer-la.</li>
+          <li>Mentre es fa, se li pot posar l'estat <strong>En curs</strong>, <strong>Esperant material</strong> o <strong>Proveïdor extern</strong>, com a qualsevol incidència.</li>
+          <li>Si passa el termini i no s'ha tancat, queda marcada <span className="etiqueta fora-termini">Fora de termini</span>: el bot avisa una vegada al grup i s'envia un correu a les adreces del resum diari.</li>
+          <li>Les dates segueixen el <strong>calendari</strong>: una tasca diària toca cada dia encara que la d'ahir no s'hagi fet, i les dues queden obertes. Si el sistema no ha pogut avisar uns dies, en crea les que faltaven.</li>
+          <li>Si una vegada no es va fer i no es farà, posa-li l'estat <strong>No realitzada</strong> (a la fitxa, o a l'historial de la tasca amb «Marcar com a no realitzada»). Queda registrada com a no feta.</li>
+        </ul>
         <h3>Crear o editar una tasca</h3>
         <Passos>
           <li>Prem <B>Nova tasca</B> (o <B>Obrir</B> en una d'existent).</li>
-          <li>Omple què cal fer, el lloc (o «Tot l'hotel»), la categoria, la <strong>freqüència</strong> (setmanal, mensual, trimestral… o un nombre de dies) i la <strong>propera vegada</strong>.</li>
+          <li>Omple què cal fer, el lloc (o «Tot l'hotel»), la categoria, la <strong>freqüència</strong> (diària, setmanal, mensual… o un nombre de dies), la <strong>propera vegada</strong> i el <strong>termini per fer-la</strong> (es proposa segons la freqüència; es pot canviar).</li>
           <li>Opcional: <strong>responsable</strong> (se li assignarà la incidència), <strong>pressupost per vegada</strong>, instruccions i els <strong>costos</strong> de cada vegada (concepte, quantitat, unitat i preu; el total es calcula sol).</li>
           <li>Prem <B>Desar canvis</B>. Si hi ha algun camp per revisar, surt marcat en vermell amb l'explicació a sota.</li>
         </Passos>

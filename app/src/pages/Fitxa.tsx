@@ -6,7 +6,7 @@ import EditorMaterials, { MATERIALS_INCIDENCIA, carregarMaterials, desarMaterial
 import { useSessio } from "../lib/sessio";
 import {
   CATEGORIES, ESTATS, ESTATS_OBERTS, NOM_CAMP, NOM_CATEGORIA, NOM_ESTAT, NOM_PRIORITAT, PRIORITATS,
-  dataCurta, dataHora, lloc, valorLlegible,
+  dataCurta, dataHora, diaCurt, foraTermini, lloc, valorLlegible,
   type Categoria, type Estat, type Incidencia, type Persona, type Prioritat,
 } from "../lib/incidencies";
 
@@ -200,6 +200,7 @@ export default function Fitxa() {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span className={`prio ${inc.prioritat}`}>{NOM_PRIORITAT[inc.prioritat]}</span>
           <span className={`estat ${inc.estat}`}>{NOM_ESTAT[inc.estat]}</span>
+          {foraTermini(inc) && <span className="etiqueta fora-termini">Fora de termini</span>}
         </div>
       </div>
 
@@ -210,7 +211,14 @@ export default function Fitxa() {
           <section className="targeta" aria-labelledby="t-desc">
             <h2 id="t-desc">Què passa</h2>
             <p className="descripcio">{inc.descripcio}</p>
-            {inc.preventiu_id && <p className="avis info">Generada pel manteniment preventiu.</p>}
+            {inc.preventiu_id && (
+              <p className={`avis ${foraTermini(inc) ? "error" : "info"}`}>
+                Generada pel <Link to="/preventiu">manteniment preventiu</Link>
+                {inc.data_prevista && <> · tocava el {diaCurt(inc.data_prevista)}</>}
+                {inc.data_limit && <> · termini fins al {diaCurt(inc.data_limit)}</>}
+                {foraTermini(inc) && <>. <strong>Ha passat el termini.</strong> Si no es farà, posa l'estat «No realitzada».</>}
+              </p>
+            )}
           </section>
 
           {(visuals.length > 0 || altresAdjunts.length > 0) && (

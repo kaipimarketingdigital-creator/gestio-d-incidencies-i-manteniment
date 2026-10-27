@@ -140,6 +140,8 @@ td select { font: 14px var(--lletra); padding: 6px 8px; min-height: 36px; border
 .estat.esperant_material, .estat.proveidor_extern { background: #f6ecd9; color: #6d5212; }
 .estat.resolta { background: #eaf2e7; color: #36552f; }
 .estat.anullada { background: #eeeeee; color: #555; }
+.estat.no_realitzada { background: #f6e3e1; color: #8f2a1f; }
+.etiqueta.fora-termini { background: #b42318; color: #fff; }
 .molla { font-size: 14px; color: var(--muted); }
 .fitxa { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
 .fitxa-principal { flex: 999 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
@@ -415,3 +417,4 @@ tr.apagada strong { font-weight: 600; }
 .paginacio-botons { display: inline-flex; align-items: center; gap: 10px; color: var(--text, inherit); }
 .paginacio-mida { display: inline-flex; align-items: center; gap: 8px; }
 .paginacio-mida select { width: auto; padding: 4px 8px; }
+.ajuda-camp { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 4px; }
