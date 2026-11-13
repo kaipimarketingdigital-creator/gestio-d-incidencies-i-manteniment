@@ -54,7 +54,7 @@ docs/
 - **Migraciones:** nunca edites una migración ya aplicada; crea la siguiente (`00NN_nom_en_catala.sql`). Toda tabla nueva lleva RLS. Las funciones con privilegios van en el esquema `privat`.
 - **Secretos solo en Supabase** (Edge Functions → Secrets): `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `SMTP_PASSWORD`; opcionales `TELEGRAM_GROUP_ID`, `GEMINI_MODEL`, `RESUM_HORA`, `PANELL_URL`. Nunca en el código ni en `app/`. El panel solo usa la clave publicable.
 - **`TELEGRAM_GROUP_ID` debe estar fijado en producción.** Si falta, el resumen se publica en el último chat que escribió al bot.
-- Las rutas `?accio=` del bot exigen la clave `tasques` de la tabla `config` (la usa pg_cron).
+- Las rutas `?accio=` del bot exigen la clave `tasques` de la tabla `config` en la cabecera `x-clau-tasques` (la usa pg_cron). Nunca en la URL: quedaría en los registros.
 - Telegram no deja a los bots descargar archivos de más de 20 MB; el bot no analiza adjuntos de más de 14 MB.
 - Antes de desplegar una función, comprueba que el código del repo coincide con lo desplegado.
 

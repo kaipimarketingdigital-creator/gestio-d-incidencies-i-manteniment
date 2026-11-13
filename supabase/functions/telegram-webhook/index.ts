@@ -3,7 +3,7 @@
 // Rutes:
 //   POST (Telegram)            rep missatges i botons. Desa el missatge i, si és un "fet" en resposta
 //                              a una incidència o un botó, actua a l'instant.
-//   GET  ?accio=processar      (amb &clau=) el crida pg_cron cada 30 s. Agrupa els missatges seguits de cada persona,
+//   GET  ?accio=processar      el crida pg_cron cada 30 s. Agrupa els missatges seguits de cada persona,
 //                              els interpreta amb Gemini i registra o actualitza incidències.
 //   GET  ?accio=configurar     registra el webhook a Telegram (una vegada).
 //   GET  ?accio=models         llista els models de Gemini disponibles (diagnòstic).
@@ -11,7 +11,8 @@
 //                              del preventiu que toquen i avisa de les que han passat el termini.
 //   GET  ?accio=avaluar        examen amb casos reals (no publica res).
 //   POST {accio:"prova_correu"} des del panell (sessió de Direcció): envia ara el resum per correu.
-//   Totes les rutes GET amb ?accio= demanen &clau= (taula config, la porta el cron).
+//   Totes les rutes GET amb ?accio= demanen la capçalera x-clau-tasques (taula config, la porta el cron).
+//   La clau no va mai a l'URL: quedaria als registres.
 //
 // Secrets: TELEGRAM_BOT_TOKEN, GEMINI_API_KEY; opcionals TELEGRAM_GROUP_ID, GEMINI_MODEL.
 
@@ -774,16 +775,23 @@ async function configurar(): Promise<Response> {
 // ---------------------------------------------------------------- servidor
 
 let clauTasques: string | null = null;
+function igualsSegur(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let dif = 0;
+  for (let i = 0; i < a.length; i++) dif |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return dif === 0;
+}
+async function llegirClauTasques(): Promise<string | null> {
+  const { data } = await db.from("config").select("valor").eq("clau", "tasques").maybeSingle();
+  return data?.valor ?? null;
+}
 async function clauValida(donada: string | null): Promise<boolean> {
   if (!donada) return false;
-  if (!clauTasques) {
-    const { data } = await db.from("config").select("valor").eq("clau", "tasques").maybeSingle();
-    clauTasques = data?.valor ?? null;
-  }
-  if (!clauTasques || donada.length !== clauTasques.length) return false;
-  let dif = 0;
-  for (let i = 0; i < donada.length; i++) dif |= donada.charCodeAt(i) ^ clauTasques.charCodeAt(i);
-  return dif === 0;
+  if (!clauTasques) clauTasques = await llegirClauTasques();
+  if (clauTasques && igualsSegur(donada, clauTasques)) return true;
+  // Si la clau s'ha canviat (rotació), la instància pot tenir l'antiga a la memòria: es torna a llegir una vegada.
+  clauTasques = await llegirClauTasques();
+  return !!clauTasques && igualsSegur(donada, clauTasques);
 }
 
 Deno.serve(async (req) => {
@@ -792,7 +800,7 @@ Deno.serve(async (req) => {
   const accio = url.searchParams.get("accio");
 
   // Les rutes de tasques només responen amb la clau de la taula config (la porta el cron).
-  if (accio && !(await clauValida(url.searchParams.get("clau")))) {
+  if (accio && !(await clauValida(req.headers.get("x-clau-tasques")))) {
     return new Response("forbidden", { status: 403 });
   }
   if (accio === "configurar") return await configurar();
