@@ -120,7 +120,7 @@ async function personaManteniment(): Promise<string | null> {
       .order("creat_el").limit(1).maybeSingle();
     cacheTecnic = data?.id ?? null;
   }
-  return cacheTecnic;
+  return cacheTecnic ?? null;
 }
 
 let cacheZones: Map<string, string> | null = null;
@@ -215,7 +215,7 @@ async function importar(form: FormData) {
     if (inc.estat !== "oberta") {
       const darrer = inc.missatges[inc.missatges.length - 1]?.data ?? inc.creada_el;
       hist.push({
-        incidencia_id: id, persona_id: inc.tancada_per ? await persona(inc.tancada_per) : manolo, camp: "estat",
+        incidencia_id: id, persona_id: inc.tancada_per ? await persona(inc.tancada_per) : tecnic, camp: "estat",
         valor_anterior: "oberta", valor_nou: inc.estat, canviat_el: inc.resolta_el ?? darrer,
       });
     }
