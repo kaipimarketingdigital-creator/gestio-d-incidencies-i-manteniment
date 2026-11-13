@@ -8,13 +8,12 @@ El equipo de mantenimiento del Hotel Rull (Delta de l'Ebre) avisa de averías ha
 
 Proyecto de Kaipi Marketing para Hotel Rull. Contacto en el hotel: Josep (validación), Nuria (zonas e infraestructura).
 
-## Estado (13 de noviembre de 2026)
+## Dónde está cada cosa
 
-- Bot, panel, preventivo, resumen diario por Telegram y por correo: funcionando con el grupo de pruebas.
-- Historial del WhatsApp del hotel cargado en producción como registro.
-- Hotel cerrado hasta la reapertura de marzo de 2027.
-- Próximos hitos: migración a cuentas del hotel (diciembre), entorno de pruebas y batería de evaluación con respuestas esperadas (enero), panel y preventivo (enero y febrero), reapertura (marzo).
-- El plan completo y las decisiones están en el proyecto de Claude «Hotel Rull - App de gestión de incidencias», documento `Hotel Rull - Estado, plan y decisiones`.
+Este archivo solo contiene **reglas**, que cambian poco. Lo demás vive en un único sitio:
+
+- **Tareas y su estado:** las issues de GitHub de este repositorio.
+- **Plan, hitos y registro de decisiones:** documento `Hotel Rull - Estado, plan y decisiones` del proyecto de Claude «Hotel Rull - App de gestión de incidencias».
 
 ## Estructura
 
@@ -74,6 +73,13 @@ docs/
 5. **Revisión:** antes de dar la pull request por buena, que la revise un agente distinto del que la escribió, con esta lista: reglas de producto, seguridad, RLS, catalán, sin datos personales, evaluación si toca la IA.
 6. **La última prueba la hace una persona** en el grupo de pruebas y en el panel.
 
+## Mantener la documentación
+
+- **Si una tarea cambia una regla** de este archivo (un rol, un comportamiento del bot, un secreto, una forma de trabajar), actualiza `CLAUDE.md` en la misma pull request.
+- **Si en una conversación se toma una decisión de producto o de plan**, anótala en el registro de decisiones del documento del proyecto y dilo en la respuesta.
+- **Al cerrar un hito** (por ejemplo, la migración), actualiza el estado y el plan en el documento del proyecto.
+- No copies el estado de las tareas en ningún documento: está en las issues.
+
 ## Comandos
 
 ```
@@ -89,6 +95,4 @@ El panel se publica solo al hacer push a `main` con cambios en `app/` (necesita 
 
 ## Pendiente conocido
 
-- La sección «Estat» del `README.md` y `docs/arquitectura-y-plan.md` están desactualizadas.
-- `avaluacio_casos` guarda lo que responde la IA, pero no la respuesta correcta esperada: no puntúa sola.
-- No hay entorno de pruebas separado de producción (previsto para después de la migración de diciembre).
+Está en las issues abiertas.
