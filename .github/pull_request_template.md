@@ -1,5 +1,5 @@
 ## Qué cambia
-<!-- Resumen corto. Enlaza la issue: "Tanca #N". -->
+<!-- Resumen corto. Enlaza la issue con "Closes #N" (en inglés: es la palabra que GitHub entiende para cerrar la issue al fusionar). -->
 
 ## Cómo se ha probado
 <!-- Pruebas hechas, y resultado de la evaluación si toca la IA (antes y después). -->
