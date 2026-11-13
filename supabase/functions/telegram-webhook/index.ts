@@ -171,7 +171,7 @@ function adjuntsDe(m: any): Adjunt[] {
 
 // deno-lint-ignore no-explicit-any
 async function rebreMissatge(m: any, update: unknown) {
-  if (GROUP_ID && String(m.chat.id) !== GROUP_ID) return;
+  if (!(await xatPermes(m.chat?.id))) return;
   if (m.from?.is_bot) return;
   const p = await persona(m.from);
   const text = m.text ?? m.caption ?? null;
@@ -209,9 +209,13 @@ async function rebreMissatge(m: any, update: unknown) {
 
 // deno-lint-ignore no-explicit-any
 async function rebreBoto(q: any) {
+  const xat = q.message?.chat?.id;
+  if (!(await xatPermes(xat))) {
+    await tg("answerCallbackQuery", { callback_query_id: q.id });
+    return;
+  }
   const [tipus, idText] = String(q.data ?? "").split(":");
   const incId = Number(idText);
-  const xat = q.message?.chat?.id;
   const p = await persona(q.from);
   const qui = p?.nom ?? "algú";
   const { data: inc } = await db.from("incidencies").select("*").eq("id", incId).maybeSingle();
@@ -456,12 +460,23 @@ function b64(bytes: Uint8Array): string {
 
 // ---------------------------------------------------------------- resum del matí
 
+// Grup fixat (secret TELEGRAM_GROUP_ID o config.grup_telegram). El bot només escolta aquest grup.
+async function grupFixat(): Promise<number | null> {
+  if (GROUP_ID && Number(GROUP_ID)) return Number(GROUP_ID);
+  const { data: c } = await db.from("config").select("valor").eq("clau", "grup_telegram").maybeSingle();
+  return c?.valor && Number(c.valor) ? Number(c.valor) : null;
+}
+// Si encara no hi ha cap grup fixat (posada en marxa d'un grup nou), s'accepta qualsevol xat.
+async function xatPermes(xat: unknown): Promise<boolean> {
+  const g = await grupFixat();
+  return g === null || Number(xat) === g;
+}
+
 // Grup on publica el bot: el secret TELEGRAM_GROUP_ID, la taula config (grup_telegram) o, si no, l'últim xat de Telegram
 // (el xat 0 són els missatges importats del WhatsApp).
 async function grupTelegram(): Promise<number | null> {
-  if (GROUP_ID) return Number(GROUP_ID);
-  const { data: c } = await db.from("config").select("valor").eq("clau", "grup_telegram").maybeSingle();
-  if (c?.valor && Number(c.valor)) return Number(c.valor);
+  const fixat = await grupFixat();
+  if (fixat !== null) return fixat;
   const { data } = await db.from("missatges").select("tg_xat_id").neq("tg_xat_id", 0)
     .order("rebut_el", { ascending: false }).limit(1).maybeSingle();
   return data?.tg_xat_id ?? null;
