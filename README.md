@@ -1,43 +1,89 @@
 # Gestió d'incidències i manteniment · Hotel Rull
 
-Bot de Telegram que converteix els avisos de manteniment que l'equip escriu al grup
-(text, foto, àudio o vídeo, en català col·loquial) en incidències registrades a Supabase,
-amb confirmació al mateix grup. Projecte de Kaipi Marketing per a Hotel Rull.
+Sistema de manteniment de l'Hotel Rull (Delta de l'Ebre). L'equip avisa de les avaries parlant
+amb naturalitat en un grup de Telegram (text, foto, àudio o vídeo, en català col·loquial); un bot
+les converteix en incidències registrades a Supabase i les confirma al mateix grup. Un panell web
+serveix a Direcció per al seguiment, el manteniment preventiu i la configuració.
+Projecte de Kaipi Marketing per a Hotel Rull.
 
-## Estat
+Les regles del projecte (producte, tècniques i forma de treballar) són a [`CLAUDE.md`](CLAUDE.md).
+Les tasques i el seu estat són a les issues d'aquest repositori.
 
-Fase 0 (preparació). Esquema aplicat al projecte de Supabase `hotel-rull-incidencies` (Irlanda) i
-webhook desplegat; pendent de connectar el token del bot i provar-lo.
+## Què fa
 
-| Fase | Dates | Contingut |
-| --- | --- | --- |
-| 0. Preparació | 7 a 9 d'octubre de 2026 | Bot, grup de proves, Supabase, prova de la IA amb avisos reals |
-| 1. Nucli | 13 a 16 d'octubre | Registre d'incidències amb confirmació, corregir, anul·lar, resolta |
-| 2. Pilot curt | 19 a 30 d'octubre | Grup real amb l'equip |
-| 3 a 5 | Novembre a març de 2027 | Cicle complet al xat, panell web, preventiu, arrencada |
+**Al grup de Telegram**
+
+- Registra incidències a partir de text, àudio, foto i vídeo, i les confirma en català responent al
+  missatge original, amb botons.
+- Entén la resolució parlada («lo de la 203 ja està») i els estats intermedis: en curs, esperant
+  material, proveïdor extern.
+- Si a un avís nou li falta la zona, la pregunta; la resta de la conversa l'ignora.
+- Publica cada dia un resum de pendents al grup i l'envia per correu.
+- Avisa una sola vegada quan venç una tasca de manteniment preventiu (Telegram i correu).
+
+**Al panell web** (`https://manteniment.hotelrull.com`)
+
+- Pàgines: Avui, Incidències (llistat i fitxa), Preventiu, Mapa, Informes, Perfil, Ajuda,
+  Configuració i Importar.
+- Rols: `direccio`, `administracio` i `manteniment`. Manteniment no veu Informes; només Direcció
+  entra a Configuració i Importar.
+- Accés sense contrasenyes: només correus convidats, amb enllaç d'accés; la sessió es tanca
+  després de 12 hores d'inactivitat.
+
+## Peces
+
+| Peça | Amb què |
+| --- | --- |
+| Canal | Telegram Bot API, amb el mode privacitat desactivat perquè el bot llegeixi tot el grup |
+| Bot i lògica | Supabase Edge Functions (`telegram-webhook`) |
+| IA | Gemini, tot concentrat a `supabase/functions/telegram-webhook/gemini.ts` per poder canviar de model |
+| Dades, fitxers i usuaris | Supabase (Postgres, Storage, Auth) |
+| Tasques programades | `pg_cron` de Supabase: processament dels missatges cada 30 s i resum diari, que també genera i avisa el preventiu |
+| Correu | SMTP del domini de l'hotel |
+| Panell | React + Vite + TypeScript amb `supabase-js`, a la carpeta `app/` |
 
 ## Estructura
 
 ```
-docs/
-  arquitectura-y-plan.md   Arquitectura i pla (referència vigent)
-  vocabulari.md            Com parla l'equip: senyals de prioritat, tancaments, zones
+app/                         Panell web
+  src/pages/                 Una pàgina per ruta
+  src/lib/                   Client de Supabase, sessió, consultes
 supabase/
-  migrations/              Esquema de la base de dades
-  seed.sql                 Zones inicials (esborrany pendent de validar)
+  migrations/NNNN_*.sql      Esquema, en ordre. Font de veritat de la base de dades
   functions/
-    telegram-webhook/      Entrada de missatges de Telegram
+    telegram-webhook/        El bot: index.ts, telegram.ts, gemini.ts (IA), correu.ts (resums)
+    importar-whatsapp/       Importació única de l'historial de WhatsApp (només Direcció)
+  seed.sql                   Zones inicials
+docs/
+  vocabulari.md              Com parla l'equip. Base del prompt de la IA
+  arquitectura-y-plan.md     Arquitectura del 6 d'octubre de 2026 (històric; vegeu la nota inicial)
+  panell/                    Maqueta estàtica del panell (referència de disseny)
+.github/
+  workflows/publicar-panell.yml   Publicació automàtica del panell
+  ISSUE_TEMPLATE/, pull_request_template.md
 ```
 
-## Peces
+## Panell: desenvolupament i publicació
 
-- **Canal:** Telegram Bot API, amb el mode privacitat desactivat perquè el bot llegeixi tot el grup.
-- **Lògica:** Supabase Edge Functions.
-- **Dades:** Supabase (Postgres, Storage, Auth).
-- **IA:** un model multimodal darrere d'una funció pròpia, per poder canviar-lo.
-- **Panell web:** fase 4.
+```
+cd app && npm ci
+npm run dev                  # http://localhost:5173
+npm run lint && npm run build
+```
+
+Cada push a `main` que toqui `app/` (o el mateix flux) executa el flux `publicar-panell.yml`: compila el panell i
+puja `app/dist/` per FTPS a l'allotjament de l'hotel. Necessita els secrets de GitHub
+`FTP_SERVIDOR`, `FTP_USUARI` i `FTP_CONTRASENYA`; si no hi són, només compila. També es pot
+llançar a mà des de la pestanya Actions.
+
+## Base de dades i bot
+
+Les migracions i les funcions es despleguen des de Claude amb el connector de Supabase, no amb la
+CLI (no hi ha `supabase/config.toml`). Res no s'aplica a producció sense l'OK explícit de Kaipi;
+vegeu [`CLAUDE.md`](CLAUDE.md) per als secrets, les regles de migració i el desplegament.
 
 ## Dades personals
 
 El xat exportat del grup, les fotos i els àudios contenen dades del personal i dels clients.
-Es guarden fora del repositori (`material-hotel/` està al `.gitignore`) i no s'han de pujar mai.
+Es guarden fora del repositori (`material-hotel/` és al `.gitignore`) i no s'han de pujar mai.
+Tampoc noms, telèfons ni missatges reals a issues, pull requests o commits.

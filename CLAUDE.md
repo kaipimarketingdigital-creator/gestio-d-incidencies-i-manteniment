@@ -29,7 +29,7 @@ supabase/
   seed.sql                 Zonas iniciales
 docs/
   vocabulari.md            Cómo habla el equipo. Base del prompt de la IA
-  arquitectura-y-plan.md   Arquitectura del 6 de octubre (parcialmente superada; ver estado arriba)
+  arquitectura-y-plan.md   Arquitectura del 6 de octubre (histórico; ver la nota al principio)
 .github/workflows/
   publicar-panell.yml      Cada push a main que toque app/ compila y publica el panel por FTPS en el hosting del hotel
 ```
