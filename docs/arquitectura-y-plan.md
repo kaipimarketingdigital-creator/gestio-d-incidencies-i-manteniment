@@ -1,5 +1,29 @@
 # Hotel Rull · Incidencias por Telegram: arquitectura y plan
 
+> **Nota: document històric.** És l'arquitectura i el pla del 6 d'octubre de 2026 i ja no és la
+> referència vigent; la frase de més avall que diu el contrari també és d'aquella data. Les regles
+> actuals són a [`CLAUDE.md`](../CLAUDE.md), les tasques a les issues del repositori, i el pla i les
+> decisions al document «Hotel Rull - Estado, plan y decisiones» del projecte de Claude.
+>
+> Què ha canviat des d'aleshores:
+>
+> - **Panell propi** en React + Vite + TypeScript (carpeta `app/`), publicat a
+>   `manteniment.hotelrull.com` per FTPS des de GitHub, en lloc de Lovable.
+> - **Rols del panell:** `direccio`, `administracio` i `manteniment`. Manteniment no veu Informes;
+>   només Direcció entra a Configuració i Importar. Accés sense contrasenyes, amb correus convidats
+>   i tancament de sessió després de 12 hores.
+> - **Manteniment preventiu** amb calendari fix, terminis de gràcia, un sol avís en vèncer
+>   (Telegram i correu) i execucions no fetes que continuen obertes.
+> - **Resum diari** per Telegram i també **per correu**, des de l'adreça de correu del sistema, al domini de l'hotel.
+> - **Estats intermedis** de les incidències (en curs, esperant material, proveïdor extern) i
+>   resolució parlada, ja funcionant.
+> - **IA:** Gemini, amb tota la lògica a `supabase/functions/telegram-webhook/gemini.ts`, i una
+>   taula d'avaluació amb casos reals.
+> - **Historial de WhatsApp** importat com a registre.
+> - **Calendari:** el pla per fases d'aquest document s'ha substituït pel pla de novembre de 2026
+>   (migració a comptes de l'hotel al desembre, entorn de proves al gener, reobertura al març
+>   de 2027).
+
 Actualizado: 6 de octubre de 2026. Este documento es la referencia vigente del proyecto y sustituye al plan de 10 días (app web con formulario en Lovable) y a la comparativa de tres arquitecturas con WhatsApp.
 
 ## Decisiones tomadas
