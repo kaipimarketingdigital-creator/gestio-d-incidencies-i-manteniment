@@ -227,7 +227,7 @@ async function importar(form: FormData) {
     await db.from("incidencies").delete().eq("id", id);
     throw e;
   }
-  return { clau: inc.clau, id, pujats, transcrits };
+  return { clau: inc.clau, id, pujats, transcrits, ...(tecnic ? {} : { avis: "No hi ha cap persona activa amb rol de manteniment: la incidència queda sense assignar." }) };
 }
 
 Deno.serve(async (req) => {

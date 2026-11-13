@@ -88,7 +88,7 @@ export default function Usuaris({ incrustat = false }: { incrustat?: boolean }) 
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nom@hotelrull.com" />
           </label>
           <label className="camp">Nom
-            <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nuria" />
+            <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom" />
           </label>
           <label className="camp">Rol
             <select value={rol} onChange={(e) => setRol(e.target.value as Rol)}>

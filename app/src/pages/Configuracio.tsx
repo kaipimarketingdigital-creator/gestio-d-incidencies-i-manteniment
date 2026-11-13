@@ -174,7 +174,7 @@ function Resum() {
             )}
             <div className="fila-camps" style={{ alignItems: "flex-start" }}>
               <div className="camp" style={{ flex: "3 1 240px" }}>
-                <input type="email" aria-label="Afegir un correu" placeholder="josep@hotelrull.com" value={nou}
+                <input type="email" aria-label="Afegir un correu" placeholder="nom@hotelrull.com" value={nou}
                   aria-invalid={!!errors.nou} aria-describedby="e-nou"
                   onChange={(e) => { setNou(e.target.value); setErrors({ ...errors, nou: "" }); }}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); afegir(); } }} />

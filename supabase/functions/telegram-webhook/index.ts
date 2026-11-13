@@ -172,7 +172,12 @@ function adjuntsDe(m: any): Adjunt[] {
 
 // deno-lint-ignore no-explicit-any
 async function rebreMissatge(m: any, update: unknown) {
-  if (!(await xatPermes(m.chat?.id))) return;
+  if (!(await xatPermes(m.chat?.id))) {
+    // Si el grup passa a supergrup, Telegram li canvia l'id: cal actualitzar config.grup_telegram.
+    if (m.migrate_to_chat_id) console.warn("el grup ha canviat d'id", m.chat?.id, "→", m.migrate_to_chat_id);
+    else console.warn("missatge d'un xat no permès, ignorat", m.chat?.id);
+    return;
+  }
   if (m.from?.is_bot) return;
   const p = await persona(m.from);
   const text = m.text ?? m.caption ?? null;
@@ -462,10 +467,15 @@ function b64(bytes: Uint8Array): string {
 // ---------------------------------------------------------------- resum del matí
 
 // Grup fixat (secret TELEGRAM_GROUP_ID o config.grup_telegram). El bot només escolta aquest grup.
+// Es guarda a la memoria un minut, per no llegir config a cada missatge.
+let grupCache: { valor: number | null; fins: number } | null = null;
 async function grupFixat(): Promise<number | null> {
   if (GROUP_ID && Number(GROUP_ID)) return Number(GROUP_ID);
+  if (grupCache && grupCache.fins > Date.now()) return grupCache.valor;
   const { data: c } = await db.from("config").select("valor").eq("clau", "grup_telegram").maybeSingle();
-  return c?.valor && Number(c.valor) ? Number(c.valor) : null;
+  const valor = c?.valor && Number(c.valor) ? Number(c.valor) : null;
+  grupCache = { valor, fins: Date.now() + 60e3 };
+  return valor;
 }
 // Si encara no hi ha cap grup fixat (posada en marxa d'un grup nou), s'accepta qualsevol xat.
 async function xatPermes(xat: unknown): Promise<boolean> {
@@ -785,12 +795,16 @@ async function llegirClauTasques(): Promise<string | null> {
   const { data } = await db.from("config").select("valor").eq("clau", "tasques").maybeSingle();
   return data?.valor ?? null;
 }
+let clauLlegidaEl = 0;
 async function clauValida(donada: string | null): Promise<boolean> {
   if (!donada) return false;
-  if (!clauTasques) clauTasques = await llegirClauTasques();
+  if (!clauTasques) { clauTasques = await llegirClauTasques(); clauLlegidaEl = Date.now(); }
   if (clauTasques && igualsSegur(donada, clauTasques)) return true;
-  // Si la clau s'ha canviat (rotació), la instància pot tenir l'antiga a la memòria: es torna a llegir una vegada.
+  // Si la clau s'ha canviat (rotació), la instància pot tenir l'antiga a la memòria: es torna a llegir,
+  // com a molt cada 30 s, perquè les peticions amb una clau falsa no facin una lectura cadascuna.
+  if (Date.now() - clauLlegidaEl < 30e3) return false;
   clauTasques = await llegirClauTasques();
+  clauLlegidaEl = Date.now();
   return !!clauTasques && igualsSegur(donada, clauTasques);
 }
 
