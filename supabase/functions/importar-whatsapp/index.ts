@@ -34,13 +34,6 @@ const CORS = {
 };
 const json = (d: unknown, status = 200) => Response.json(d, { status, headers: CORS });
 
-// Rol de cada persona del grup (les que no existeixen es creen sense Telegram).
-const ROLS: Record<string, { rol: string; compartit?: boolean }> = {
-  "Manolo": { rol: "manteniment" }, "Ionela": { rol: "pisos" }, "Davinia": { rol: "pisos" },
-  "Maru": { rol: "cuina" }, "Nuria Ralda": { rol: "direccio" }, "Recepció (mòbil)": { rol: "recepcio", compartit: true },
-  "Josep Callau": { rol: "direccio" },
-};
-
 type Msg = { linia: number; autor: string; data: string; text: string; fitxers: string[] };
 type Inc = {
   clau: string; zona: string | null; zona_text: string | null; categoria: string; prioritat: string; descripcio: string;
@@ -110,12 +103,24 @@ async function persona(nom: string): Promise<string> {
   }
   const ja = cachePersones.get(nom.toLowerCase());
   if (ja) return ja;
-  const r = ROLS[nom] ?? { rol: "pisos" };
+  // Les persones noves es creen sense rol, com fa el bot: Direcció l'assigna després al panell.
+  // (Els noms i rols del personal no poden ser al codi.)
   const { data, error } = await db.from("persones")
-    .insert({ nom, rol: r.rol, compartit: !!r.compartit, actiu: true }).select("id").single();
+    .insert({ nom, actiu: true }).select("id").single();
   if (error) throw new Error(`persona ${nom}: ${error.message}`);
   cachePersones.set(nom.toLowerCase(), data.id);
   return data.id;
+}
+
+// Les incidències del WhatsApp s'assignen a la persona de manteniment (la primera activa amb aquest rol).
+let cacheTecnic: string | null | undefined;
+async function personaManteniment(): Promise<string | null> {
+  if (cacheTecnic === undefined) {
+    const { data } = await db.from("persones").select("id").eq("rol", "manteniment").eq("actiu", true)
+      .order("creat_el").limit(1).maybeSingle();
+    cacheTecnic = data?.id ?? null;
+  }
+  return cacheTecnic;
 }
 
 let cacheZones: Map<string, string> | null = null;
@@ -169,10 +174,10 @@ async function importar(form: FormData) {
     .eq("cru->>origen", "whatsapp").eq("cru->>incidencia", inc.clau);
   if (count) return { clau: inc.clau, ja: true };
 
-  const manolo = await persona("Manolo");
+  const tecnic = await personaManteniment();
   const { data: fila, error } = await db.from("incidencies").insert({
     zona_id: await zona(inc.zona), zona_text: inc.zona_text, categoria: inc.categoria, prioritat: inc.prioritat,
-    descripcio: inc.descripcio, estat: inc.estat, reportada_per: await persona(inc.reportada_per), assignada_a: manolo,
+    descripcio: inc.descripcio, estat: inc.estat, reportada_per: await persona(inc.reportada_per), assignada_a: tecnic,
     cal_repassar: inc.cal_repassar, observacions: inc.observacions, creada_el: inc.creada_el, resolta_el: inc.resolta_el,
   }).select("id").single();
   if (error) throw new Error(`incidència: ${error.message}`);
