@@ -53,8 +53,9 @@ docs/
 - **Cualquier cambio en el prompt, el esquema de respuesta o el modelo** se valida con la evaluación (`?accio=avaluar` sobre `avaluacio_casos`) antes y después, y el resultado va en la pull request.
 - **Migraciones:** nunca edites una migración ya aplicada; crea la siguiente (`00NN_nom_en_catala.sql`). Toda tabla nueva lleva RLS. Las funciones con privilegios van en el esquema `privat`.
 - **Secretos solo en Supabase** (Edge Functions → Secrets): `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `SMTP_PASSWORD`; opcionales `TELEGRAM_GROUP_ID`, `GEMINI_MODEL`, `RESUM_HORA`, `PANELL_URL`. Nunca en el código ni en `app/`. El panel solo usa la clave publicable.
-- **`TELEGRAM_GROUP_ID` debe estar fijado en producción.** Si falta, el resumen se publica en el último chat que escribió al bot.
-- Las rutas `?accio=` del bot exigen la clave `tasques` de la tabla `config` (la usa pg_cron).
+- **El grupo debe estar fijado en producción** (secreto `TELEGRAM_GROUP_ID` o fila `grup_telegram` de `config`). El bot solo escucha ese grupo, también en los botones. Si no hay ninguno fijado, escucha cualquier chat y el resumen se publica en el último que escribió (solo para poner en marcha un grupo nuevo).
+- **El panel solo puede cambiar de una incidencia los campos de la ficha** (permisos por columna, migración 0016). Si la ficha necesita un campo nuevo, hay que darle permiso en una migración.
+- Las rutas `?accio=` del bot exigen la clave `tasques` de la tabla `config` en la cabecera `x-clau-tasques` (la usa pg_cron). Nunca en la URL: quedaría en los registros.
 - Telegram no deja a los bots descargar archivos de más de 20 MB; el bot no analiza adjuntos de más de 14 MB.
 - Antes de desplegar una función, comprueba que el código del repo coincide con lo desplegado.
 

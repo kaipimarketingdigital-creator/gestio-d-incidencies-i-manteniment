@@ -3,7 +3,7 @@
 // Rutes:
 //   POST (Telegram)            rep missatges i botons. Desa el missatge i, si és un "fet" en resposta
 //                              a una incidència o un botó, actua a l'instant.
-//   GET  ?accio=processar      (amb &clau=) el crida pg_cron cada 30 s. Agrupa els missatges seguits de cada persona,
+//   GET  ?accio=processar      el crida pg_cron cada 30 s. Agrupa els missatges seguits de cada persona,
 //                              els interpreta amb Gemini i registra o actualitza incidències.
 //   GET  ?accio=configurar     registra el webhook a Telegram (una vegada).
 //   GET  ?accio=models         llista els models de Gemini disponibles (diagnòstic).
@@ -11,7 +11,8 @@
 //                              del preventiu que toquen i avisa de les que han passat el termini.
 //   GET  ?accio=avaluar        examen amb casos reals (no publica res).
 //   POST {accio:"prova_correu"} des del panell (sessió de Direcció): envia ara el resum per correu.
-//   Totes les rutes GET amb ?accio= demanen &clau= (taula config, la porta el cron).
+//   Totes les rutes GET amb ?accio= demanen la capçalera x-clau-tasques (taula config, la porta el cron).
+//   La clau no va mai a l'URL: quedaria als registres.
 //
 // Secrets: TELEGRAM_BOT_TOKEN, GEMINI_API_KEY; opcionals TELEGRAM_GROUP_ID, GEMINI_MODEL.
 
@@ -171,7 +172,12 @@ function adjuntsDe(m: any): Adjunt[] {
 
 // deno-lint-ignore no-explicit-any
 async function rebreMissatge(m: any, update: unknown) {
-  if (GROUP_ID && String(m.chat.id) !== GROUP_ID) return;
+  if (!(await xatPermes(m.chat?.id))) {
+    // Si el grup passa a supergrup, Telegram li canvia l'id: cal actualitzar config.grup_telegram.
+    if (m.migrate_to_chat_id) console.warn("el grup ha canviat d'id", m.chat?.id, "→", m.migrate_to_chat_id);
+    else console.warn("missatge d'un xat no permès, ignorat", m.chat?.id);
+    return;
+  }
   if (m.from?.is_bot) return;
   const p = await persona(m.from);
   const text = m.text ?? m.caption ?? null;
@@ -209,9 +215,13 @@ async function rebreMissatge(m: any, update: unknown) {
 
 // deno-lint-ignore no-explicit-any
 async function rebreBoto(q: any) {
+  const xat = q.message?.chat?.id;
+  if (!(await xatPermes(xat))) {
+    await tg("answerCallbackQuery", { callback_query_id: q.id });
+    return;
+  }
   const [tipus, idText] = String(q.data ?? "").split(":");
   const incId = Number(idText);
-  const xat = q.message?.chat?.id;
   const p = await persona(q.from);
   const qui = p?.nom ?? "algú";
   const { data: inc } = await db.from("incidencies").select("*").eq("id", incId).maybeSingle();
@@ -456,12 +466,28 @@ function b64(bytes: Uint8Array): string {
 
 // ---------------------------------------------------------------- resum del matí
 
+// Grup fixat (secret TELEGRAM_GROUP_ID o config.grup_telegram). El bot només escolta aquest grup.
+// Es guarda a la memoria un minut, per no llegir config a cada missatge.
+let grupCache: { valor: number | null; fins: number } | null = null;
+async function grupFixat(): Promise<number | null> {
+  if (GROUP_ID && Number(GROUP_ID)) return Number(GROUP_ID);
+  if (grupCache && grupCache.fins > Date.now()) return grupCache.valor;
+  const { data: c } = await db.from("config").select("valor").eq("clau", "grup_telegram").maybeSingle();
+  const valor = c?.valor && Number(c.valor) ? Number(c.valor) : null;
+  grupCache = { valor, fins: Date.now() + 60e3 };
+  return valor;
+}
+// Si encara no hi ha cap grup fixat (posada en marxa d'un grup nou), s'accepta qualsevol xat.
+async function xatPermes(xat: unknown): Promise<boolean> {
+  const g = await grupFixat();
+  return g === null || Number(xat) === g;
+}
+
 // Grup on publica el bot: el secret TELEGRAM_GROUP_ID, la taula config (grup_telegram) o, si no, l'últim xat de Telegram
 // (el xat 0 són els missatges importats del WhatsApp).
 async function grupTelegram(): Promise<number | null> {
-  if (GROUP_ID) return Number(GROUP_ID);
-  const { data: c } = await db.from("config").select("valor").eq("clau", "grup_telegram").maybeSingle();
-  if (c?.valor && Number(c.valor)) return Number(c.valor);
+  const fixat = await grupFixat();
+  if (fixat !== null) return fixat;
   const { data } = await db.from("missatges").select("tg_xat_id").neq("tg_xat_id", 0)
     .order("rebut_el", { ascending: false }).limit(1).maybeSingle();
   return data?.tg_xat_id ?? null;
@@ -759,16 +785,27 @@ async function configurar(): Promise<Response> {
 // ---------------------------------------------------------------- servidor
 
 let clauTasques: string | null = null;
+function igualsSegur(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let dif = 0;
+  for (let i = 0; i < a.length; i++) dif |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return dif === 0;
+}
+async function llegirClauTasques(): Promise<string | null> {
+  const { data } = await db.from("config").select("valor").eq("clau", "tasques").maybeSingle();
+  return data?.valor ?? null;
+}
+let clauLlegidaEl = 0;
 async function clauValida(donada: string | null): Promise<boolean> {
   if (!donada) return false;
-  if (!clauTasques) {
-    const { data } = await db.from("config").select("valor").eq("clau", "tasques").maybeSingle();
-    clauTasques = data?.valor ?? null;
-  }
-  if (!clauTasques || donada.length !== clauTasques.length) return false;
-  let dif = 0;
-  for (let i = 0; i < donada.length; i++) dif |= donada.charCodeAt(i) ^ clauTasques.charCodeAt(i);
-  return dif === 0;
+  if (!clauTasques) { clauTasques = await llegirClauTasques(); clauLlegidaEl = Date.now(); }
+  if (clauTasques && igualsSegur(donada, clauTasques)) return true;
+  // Si la clau s'ha canviat (rotació), la instància pot tenir l'antiga a la memòria: es torna a llegir,
+  // com a molt cada 30 s, perquè les peticions amb una clau falsa no facin una lectura cadascuna.
+  if (Date.now() - clauLlegidaEl < 30e3) return false;
+  clauTasques = await llegirClauTasques();
+  clauLlegidaEl = Date.now();
+  return !!clauTasques && igualsSegur(donada, clauTasques);
 }
 
 Deno.serve(async (req) => {
@@ -777,7 +814,7 @@ Deno.serve(async (req) => {
   const accio = url.searchParams.get("accio");
 
   // Les rutes de tasques només responen amb la clau de la taula config (la porta el cron).
-  if (accio && !(await clauValida(url.searchParams.get("clau")))) {
+  if (accio && !(await clauValida(req.headers.get("x-clau-tasques")))) {
     return new Response("forbidden", { status: 403 });
   }
   if (accio === "configurar") return await configurar();
