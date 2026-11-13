@@ -81,11 +81,9 @@ docs/
 cd app && npm ci
 npm run dev                 # http://localhost:5173
 npm run lint && npm run build
-
-# Supabase (solo con OK explícito si apunta a producción)
-supabase functions deploy telegram-webhook --project-ref emgwjhypuxgbrajjnnsj --no-verify-jwt
-supabase db push
 ```
+
+**Supabase:** las migraciones y las funciones se despliegan desde Claude con el conector de Supabase (aplicar migración, desplegar función), siempre con el OK explícito de Raquel si es producción. El repositorio no tiene configurada la CLI de Supabase (no hay `supabase/config.toml`). `telegram-webhook` se despliega sin verificación de JWT, porque la llama Telegram; `importar-whatsapp`, con verificación.
 
 El panel se publica solo al hacer push a `main` con cambios en `app/` (necesita los secretos `FTP_SERVIDOR`, `FTP_USUARI` y `FTP_CONTRASENYA` en GitHub).
 
